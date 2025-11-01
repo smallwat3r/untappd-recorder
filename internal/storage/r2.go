@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -30,23 +29,23 @@ type R2Client struct {
 	s3Client S3Client
 }
 
-func New(cfg *config.Config) *R2Client {
+func New(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2AccountID),
 		}, nil
 	})
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithEndpointResolverWithOptions(r2Resolver),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2AccessKeySecret, "")),
 		awsconfig.WithRegion(cfg.R2Region),
 	)
 	if err != nil {
-		log.Fatalf("Failed to load AWS config: %v", err)
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
-	return NewR2Client(cfg, s3.NewFromConfig(awsCfg))
+	return NewR2Client(cfg, s3.NewFromConfig(awsCfg)), nil
 }
 
 func generateSanitizedKey(checkin untappd.Checkin) string {
@@ -72,7 +71,7 @@ func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
 	}
 }
 
-func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
+func (c *R2Client) SaveCheckin(ctx context.Context, checkin untappd.Checkin) error {
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
@@ -87,7 +86,12 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
 
 	fmt.Printf("Found photo: %s\n", photoURL)
 
-	resp, err := http.Get(photoURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, photoURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request for photo %s: %w", photoURL, err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download photo %s: %w", photoURL, err)
 	}
@@ -103,7 +107,7 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
 	}
 
 	key := generateSanitizedKey(checkin)
-	_, err = c.s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: &c.cfg.R2BucketName,
 		Key:    &key,
 		Body:   bytes.NewReader(photoBytes),
@@ -127,8 +131,8 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
 	return nil
 }
 
-func (c *R2Client) GetLatestCheckinID() (int, error) {
-	output, err := c.s3Client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+func (c *R2Client) GetLatestCheckinID(ctx context.Context) (int, error) {
+	output, err := c.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: &c.cfg.R2BucketName,
 	})
 	if err != nil {
@@ -146,7 +150,7 @@ func (c *R2Client) GetLatestCheckinID() (int, error) {
 		}
 	}
 
-	headObj, err := c.s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+	headObj, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: &c.cfg.R2BucketName,
 		Key:    latest.Key,
 	})

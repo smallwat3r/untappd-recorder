@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
@@ -17,20 +19,27 @@ func main() {
 
 	fmt.Println("Successfully loaded configuration.")
 
-	r2Client := storage.New(cfg)
-	latestCheckinID, err := r2Client.GetLatestCheckinID()
+	r2Client, err := storage.New(ctx, cfg)
+	if err != nil {
+		log.Fatalf("Error creating R2 client: %v", err)
+	}
+	latestCheckinID, err := r2Client.GetLatestCheckinID(ctx)
 	if err != nil {
 		log.Fatalf("Error getting latest checkin ID from R2: %v", err)
 	}
 
 	untappdClient := untappd.NewClient(cfg)
-	untappdClient.FetchCheckins(latestCheckinID, func(checkins []untappd.Checkin) {
+	err = untappdClient.FetchCheckins(ctx, latestCheckinID, func(ctx context.Context, checkins []untappd.Checkin) error {
 		fmt.Printf("Processing %d checkins\n", len(checkins))
 		for _, checkin := range checkins {
 			log.Printf("Processing checkin %d", checkin.CheckinID)
-			if err := r2Client.SaveCheckin(checkin); err != nil {
+			if err := r2Client.SaveCheckin(ctx, checkin); err != nil {
 				log.Printf("Failed to save checkin %d: %v", checkin.CheckinID, err)
 			}
 		}
+		return nil
 	})
+	if err != nil {
+		log.Fatalf("Error fetching checkins: %v", err)
+	}
 }
