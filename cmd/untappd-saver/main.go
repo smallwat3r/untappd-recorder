@@ -47,6 +47,8 @@ func main() {
 			}
 		}
 
+		// we set the first checkin to be the latest (most recent to oldest), so we remember
+		// from where to start next time the script runs.
 		if len(checkins) > 0 && !latestUpdated {
 			if err := updateLatestCheckinIDKey(ctx, store, cfg, checkins[0]); err != nil {
 				log.Printf("Failed to update latest checkin ID: %v", err)
@@ -145,6 +147,8 @@ func getLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *conf
 	return checkinID, nil
 }
 
+// sets the 'latest' key to alias the most recent check-in image.
+// the original image (named by its ID) is preserved 'latest' is simply overwritten.
 func updateLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin) error {
 	type copyObjectClient interface {
 		CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
