@@ -1,4 +1,4 @@
-BINARY_NAME=untappd-server
+BINARY_NAME=untappd-saver
 BINARY_UNIX=$(BINARY_NAME)
 
 .PHONY: help

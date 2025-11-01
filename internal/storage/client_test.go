@@ -62,7 +62,7 @@ func TestClient_Upload(t *testing.T) {
 
 	metadata := &CheckinMetadata{
 		ID:   "123",
-		Date: "2025-11-01",
+		Date: "Sat, 01 Nov 2025 00:00:00 +0000",
 	}
 	err := client.Upload(context.Background(), []byte("test"), metadata)
 	if err != nil {

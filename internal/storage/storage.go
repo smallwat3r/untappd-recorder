@@ -21,29 +21,31 @@ type S3Client interface {
 
 // holds the metadata for a checkin photo
 type CheckinMetadata struct {
-	ID      string
-	Beer    string
-	Brewery string
-	Comment string
-	Rating  string
-	Venue   string
-	Date    string
-	LatLng  string
-	Style   string
-	ABV     string
+	ID           string
+	Beer         string
+	Brewery      string
+	Comment      string
+	Rating       string
+	Venue        string
+	Date         string
+	LatLng       string
+	Style        string
+	ABV          string
+	ServingStyle string
 }
 
 func (m *CheckinMetadata) ToMap() map[string]string {
 	return map[string]string{
-		"id":      m.ID,
-		"beer":    m.Beer,
-		"brewery": m.Brewery,
-		"comment": m.Comment,
-		"rating":  m.Rating,
-		"venue":   m.Venue,
-		"date":    m.Date,
-		"latlng":  m.LatLng,
-		"style":   m.Style,
-		"abv":     m.ABV,
+		"id":            m.ID,
+		"beer":          m.Beer,
+		"brewery":       m.Brewery,
+		"comment":       m.Comment,
+		"rating":        m.Rating,
+		"venue":         m.Venue,
+		"date":          m.Date,
+		"latlng":        m.LatLng,
+		"style":         m.Style,
+		"abv":           m.ABV,
+		"serving-style": m.ServingStyle,
 	}
 }
