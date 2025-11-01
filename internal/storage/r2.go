@@ -37,6 +37,7 @@ func New(cfg *config.Config) *R2Client {
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
 		awsconfig.WithEndpointResolverWithOptions(r2Resolver),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2AccessKeySecret, "")),
+		awsconfig.WithRegion(cfg.R2Region),
 	)
 	if err != nil {
 		log.Fatalf("Failed to load AWS config: %v", err)
@@ -53,11 +54,18 @@ func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
 }
 
 func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
-	if len(checkin.Media.Items) == 0 {
+	photoURL := ""
+	if len(checkin.Media.Items) > 0 {
+		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
+	} else if checkin.Beer.BeerImage != "" {
+		// fallback to using the photo used by the brewery for the beer
+		photoURL = checkin.Beer.BeerImage
+	}
+
+	if photoURL == "" {
 		return nil
 	}
 
-	photoURL := checkin.Media.Items[0].Photo.PhotoImgOg
 	fmt.Printf("Found photo: %s\n", photoURL)
 
 	resp, err := http.Get(photoURL)
@@ -118,11 +126,12 @@ func (c *R2Client) GetLatestCheckinID() (int, error) {
 		}
 	}
 
-	// The key is the checkin ID + .jpg, so we remove the extension.
+	// the key is the checkin ID + .jpg, so we remove the extension.
 	checkinID, err := strconv.Atoi((*latest.Key)[:len(*latest.Key)-4])
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse checkin ID from key %s: %w", *latest.Key, err)
 	}
-
+	
+	fmt.Printf("Latest stored checkinID is: %d\n", checkinID)
 	return checkinID, nil
 }

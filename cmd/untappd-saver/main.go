@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/smallwat3r/untappd-saver/internal/config"
 	"github.com/smallwat3r/untappd-saver/internal/storage"
@@ -25,28 +24,13 @@ func main() {
 	}
 
 	untappdClient := untappd.NewClient(cfg)
-	checkins := untappdClient.FetchCheckins(latestCheckinID)
-
-	var wg sync.WaitGroup
-	checkinChan := make(chan untappd.Checkin, len(checkins))
-
-	for i := 0; i < cfg.NumWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for checkin := range checkinChan {
-				log.Printf("Processing checkin %d", checkin.CheckinID)
-				if err := r2Client.SaveCheckin(checkin); err != nil {
-					log.Printf("Failed to save checkin %d: %v", checkin.CheckinID, err)
-				}
+	untappdClient.FetchCheckins(latestCheckinID, func(checkins []untappd.Checkin) {
+		fmt.Printf("Processing %d checkins\n", len(checkins))
+		for _, checkin := range checkins {
+			log.Printf("Processing checkin %d", checkin.CheckinID)
+			if err := r2Client.SaveCheckin(checkin); err != nil {
+				log.Printf("Failed to save checkin %d: %v", checkin.CheckinID, err)
 			}
-		}()
-	}
-
-	for _, checkin := range checkins {
-		checkinChan <- checkin
-	}
-	close(checkinChan)
-
-	wg.Wait()
+		}
+	})
 }

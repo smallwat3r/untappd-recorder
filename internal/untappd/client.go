@@ -21,8 +21,7 @@ func NewClient(cfg *config.Config) *Client {
 	}
 }
 
-func (c *Client) FetchCheckins(sinceID int) []Checkin {
-	var allCheckins []Checkin
+func (c *Client) FetchCheckins(sinceID int, checkinProcessor func([]Checkin)) {
 	endpoint := "https://api.untappd.com/v4/user/checkins"
 	maxID := 0
 
@@ -56,13 +55,15 @@ func (c *Client) FetchCheckins(sinceID int) []Checkin {
 			log.Fatalf("Failed to decode response: %v", err)
 		}
 
-		allCheckins = append(allCheckins, untappdResp.Response.Checkins.Items...)
+		if len(untappdResp.Response.Checkins.Items) == 0 {
+			break
+		}
+
+		checkinProcessor(untappdResp.Response.Checkins.Items)
+
 		if untappdResp.Response.Pagination.MaxID == 0 {
 			break
 		}
 		maxID = untappdResp.Response.Pagination.MaxID
 	}
-
-	fmt.Printf("Fetched %d check-ins.\n", len(allCheckins))
-	return allCheckins
 }
