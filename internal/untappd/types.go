@@ -27,7 +27,7 @@ type Checkin struct {
 	Media          Media   `json:"media"`
 	Beer           Beer    `json:"beer"`
 	Brewery        Brewery `json:"brewery"`
-	Venue          Venue   `json:"venue"`
+	Venue          *Venue  `json:"venue"`
 }
 
 type Media struct {

@@ -47,7 +47,7 @@ func TestClient_Upload(t *testing.T) {
 			if *params.Bucket != "test-bucket" {
 				t.Errorf("expected bucket to be 'test-bucket', got %s", *params.Bucket)
 			}
-			expectedKey := "test-file.jpg"
+			expectedKey := "2025/11/01/123.jpg"
 			if *params.Key != expectedKey {
 				t.Errorf("expected key to be '%s', got %s", expectedKey, *params.Key)
 			}
@@ -60,7 +60,11 @@ func TestClient_Upload(t *testing.T) {
 		bucketName: "test-bucket",
 	}
 
-	err := client.Upload(context.Background(), []byte("test"), "test-file.jpg", nil)
+	metadata := &CheckinMetadata{
+		ID:   "123",
+		Date: "2025-11-01",
+	}
+	err := client.Upload(context.Background(), []byte("test"), metadata)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
