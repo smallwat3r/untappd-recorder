@@ -1,4 +1,4 @@
-module github.com/smallwat3r/untappd-saver
+module github.com/smallwat3r/untappd-recorder
 
 go 1.24.9
 

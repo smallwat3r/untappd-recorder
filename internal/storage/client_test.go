@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/smallwat3r/untappd-saver/internal/config"
+	"github.com/smallwat3r/untappd-recorder/internal/config"
 )
 
 type mockS3Client struct {

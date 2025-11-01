@@ -13,10 +13,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/smallwat3r/untappd-saver/internal/config"
-	"github.com/smallwat3r/untappd-saver/internal/photo"
-	"github.com/smallwat3r/untappd-saver/internal/storage"
-	"github.com/smallwat3r/untappd-saver/internal/untappd"
+	"github.com/smallwat3r/untappd-recorder/internal/config"
+	"github.com/smallwat3r/untappd-recorder/internal/photo"
+	"github.com/smallwat3r/untappd-recorder/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 func main() {

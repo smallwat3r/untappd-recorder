@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/smallwat3r/untappd-saver/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
 
 func DownloadAndSave(ctx context.Context, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
