@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -40,17 +41,30 @@ func main() {
 	latestUpdated := false
 	err = untappdClient.FetchCheckins(ctx, latestCheckinIDKey, func(ctx context.Context, checkins []untappd.Checkin) error {
 		fmt.Printf("Processing %d checkins\n", len(checkins))
+
+		var wg sync.WaitGroup
+		semaphore := make(chan struct{}, 10)
+
 		for _, checkin := range checkins {
-			log.Printf("Processing checkin %d", checkin.CheckinID)
-			if err := saveCheckin(ctx, store, cfg, checkin); err != nil {
-				log.Printf("Failed to save checkin %d: %v", checkin.CheckinID, err)
-			}
+			wg.Add(1)
+			semaphore <- struct{}{}
+
+			go func(c untappd.Checkin) {
+				defer wg.Done()
+				defer func() { <-semaphore }()
+
+				log.Printf("Processing checkin %d", c.CheckinID)
+				if err := saveCheckin(ctx, store, cfg, c); err != nil {
+					log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
+				}
+			}(checkin)
 		}
 
+		wg.Wait()
+
+		// we set the first checkin to be the latest (most recent to oldest), so we remember
+		// from where to start next time the script runs.
 		if len(checkins) > 0 && !latestUpdated {
-			// create a copy of the first checkin (most recent to oldest), aliased as
-			// 'latest', so we do remember by which ID (from the metadata) to start next
-			// time this runs.
 			if err := updateLatestCheckinIDKey(ctx, store, cfg, checkins[0]); err != nil {
 				log.Printf("Failed to update latest checkin ID: %v", err)
 			}
@@ -168,4 +182,3 @@ func updateLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *c
 	})
 	return err
 }
-
