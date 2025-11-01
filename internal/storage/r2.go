@@ -7,7 +7,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -20,6 +22,7 @@ import (
 type S3Client interface {
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 }
 
 type R2Client struct {
@@ -44,6 +47,22 @@ func New(cfg *config.Config) *R2Client {
 	}
 
 	return NewR2Client(cfg, s3.NewFromConfig(awsCfg))
+}
+
+func generateSanitizedKey(checkin untappd.Checkin) string {
+	re := regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+	beerName := re.ReplaceAllString(checkin.Beer.BeerName, "_")
+	beerName = strings.Trim(beerName, "_")
+	createdAt := re.ReplaceAllString(checkin.CreatedAt, "_")
+	createdAt = strings.Trim(createdAt, "_")
+	keyParts := []string{strconv.Itoa(checkin.CheckinID)}
+	if beerName != "" {
+		keyParts = append(keyParts, beerName)
+	}
+	if createdAt != "" {
+		keyParts = append(keyParts, createdAt)
+	}
+	return fmt.Sprintf("%s.jpg", strings.Join(keyParts, "_"))
 }
 
 func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
@@ -83,12 +102,13 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
 		return fmt.Errorf("failed to read photo bytes: %w", err)
 	}
 
-	key := fmt.Sprintf("%d.jpg", checkin.CheckinID)
+	key := generateSanitizedKey(checkin)
 	_, err = c.s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: &c.cfg.R2BucketName,
 		Key:    &key,
 		Body:   bytes.NewReader(photoBytes),
 		Metadata: map[string]string{
+			"id":      strconv.Itoa(checkin.CheckinID),
 			"beer":    checkin.Beer.BeerName,
 			"brewery": checkin.Brewery.BreweryName,
 			"comment": checkin.CheckinComment,
@@ -126,12 +146,19 @@ func (c *R2Client) GetLatestCheckinID() (int, error) {
 		}
 	}
 
-	// the key is the checkin ID + .jpg, so we remove the extension.
-	checkinID, err := strconv.Atoi((*latest.Key)[:len(*latest.Key)-4])
+	headObj, err := c.s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+		Bucket: &c.cfg.R2BucketName,
+		Key:    latest.Key,
+	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse checkin ID from key %s: %w", *latest.Key, err)
+		return 0, fmt.Errorf("failed to get object metadata from R2: %w", err)
 	}
-	
+
+	checkinID, err := strconv.Atoi(headObj.Metadata["id"])
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse checkin ID from metadata: %w", err)
+	}
+
 	fmt.Printf("Latest stored checkinID is: %d\n", checkinID)
 	return checkinID, nil
 }

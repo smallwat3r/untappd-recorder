@@ -23,12 +23,7 @@ type Checkin struct {
 			} `json:"photo"`
 		} `json:"items"`
 	} `json:"media"`
-	Beer struct {
-		BeerName  string  `json:"beer_name"`
-		BeerStyle string  `json:"beer_style"`
-		BeerABV   float64 `json:"beer_abv"`
-		BeerImage string  `json:"beer_label"`
-	} `json:"beer"`
+	Beer    Beer `json:"beer"`
 	Brewery struct {
 		BreweryName string `json:"brewery_name"`
 	} `json:"brewery"`
@@ -39,4 +34,11 @@ type Checkin struct {
 			Lng float64 `json:"lng"`
 		} `json:"location"`
 	} `json:"venue"`
+}
+
+type Beer struct {
+	BeerName  string  `json:"beer_name"`
+	BeerStyle string  `json:"beer_style"`
+	BeerABV   float64 `json:"beer_abv"`
+	BeerImage string  `json:"beer_label"`
 }
