@@ -90,13 +90,6 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
-	} else if checkin.Beer.BeerImage != "" {
-		// fallback to using the photo used by the brewery for the beer
-		photoURL = checkin.Beer.BeerImage
-	}
-
-	if photoURL == "" {
-		return nil
 	}
 
 	metadata := &storage.CheckinMetadata{

@@ -19,8 +19,6 @@ func DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Stor
 			return fmt.Errorf("failed to read missing photo file %s: %w", cfg.MissingPhotoPath, err)
 		}
 		return store.Upload(ctx, photoBytes, metadata)
-	} else {
-		fmt.Printf("Found photo: %s\n", photoURL)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, photoURL, nil)
