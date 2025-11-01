@@ -7,7 +7,7 @@ import (
 )
 
 type Storage interface {
-	Upload(ctx context.Context, file []byte, fileName string, metadata map[string]string) error
+	Upload(ctx context.Context, file []byte, metadata *CheckinMetadata) error
 	Download(ctx context.Context, fileName string) ([]byte, error)
 }
 

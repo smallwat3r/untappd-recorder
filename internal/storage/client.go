@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -63,14 +65,29 @@ func newS3Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Upload(ctx context.Context, file []byte, fileName string, metadata map[string]string) error {
-	_, err := c.s3Client.PutObject(ctx, &s3.PutObjectInput{
+func (c *Client) Upload(ctx context.Context, file []byte, metadata *CheckinMetadata) error {
+	checkinTime, err := time.Parse("2006-01-02", metadata.Date)
+	if err != nil {
+		return fmt.Errorf("failed to parse checkin date %s: %w", metadata.Date, err)
+	}
+
+	year := checkinTime.Format("2006")
+	month := checkinTime.Format("01")
+	day := checkinTime.Format("02")
+
+	datedKey := path.Join(year, month, day, fmt.Sprintf("%s.jpg", metadata.ID))
+
+	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:   &c.bucketName,
-		Key:      &fileName,
+		Key:      &datedKey,
 		Body:     bytes.NewReader(file),
-		Metadata: metadata,
+		Metadata: metadata.ToMap(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to upload dated object: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) Download(ctx context.Context, fileName string) ([]byte, error) {

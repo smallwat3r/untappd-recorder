@@ -7,8 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -126,8 +128,7 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		ABV:     fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
-	key := fmt.Sprintf("%d.jpg", checkin.CheckinID)
-	return store.Upload(ctx, photoBytes, key, metadata.ToMap())
+	return store.Upload(ctx, photoBytes, &metadata)
 }
 
 func getLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *config.Config) (int, error) {
@@ -174,11 +175,23 @@ func updateLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *c
 		return fmt.Errorf("storage provider does not support CopyObject")
 	}
 
-	sourceKey := fmt.Sprintf("%s/%d.jpg", cfg.BucketName, checkin.CheckinID)
-	_, err := c.CopyObject(ctx, &s3.CopyObjectInput{
+	checkinTime, err := time.Parse("2006-01-02", checkin.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to parse checkin date %s: %w", checkin.CreatedAt, err)
+	}
+
+	year := checkinTime.Format("2006")
+	month := checkinTime.Format("01")
+	day := checkinTime.Format("02")
+
+	key := path.Join(year, month, day, fmt.Sprintf("%s.jpg", strconv.Itoa(checkin.CheckinID)))
+	latestKey := "latest.jpg"
+
+	sourceKey := path.Join(cfg.BucketName, key)
+	_, err = c.CopyObject(ctx, &s3.CopyObjectInput{
 		Bucket:     &cfg.BucketName,
 		CopySource: aws.String(sourceKey),
-		Key:        aws.String("latest"),
+		Key:        &latestKey,
 	})
 	return err
 }
