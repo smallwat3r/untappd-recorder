@@ -5,16 +5,23 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
+	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
 
-func DownloadAndSave(ctx context.Context, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+func DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
 	if photoURL == "" {
-		return nil // Nothing to do
+		fmt.Printf("No photo found, using default: %s\n", cfg.MissingPhotoPath)
+		photoBytes, err := os.ReadFile(cfg.MissingPhotoPath)
+		if err != nil {
+			return fmt.Errorf("failed to read missing photo file %s: %w", cfg.MissingPhotoPath, err)
+		}
+		return store.Upload(ctx, photoBytes, metadata)
+	} else {
+		fmt.Printf("Found photo: %s\n", photoURL)
 	}
-
-	fmt.Printf("Found photo: %s\n", photoURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, photoURL, nil)
 	if err != nil {

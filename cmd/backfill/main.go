@@ -118,11 +118,6 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 				return
 			}
 
-			if csvRecord.PhotoURL == "" {
-				log.Printf("Skipping checkin %s, no photo URL", csvRecord.CheckinID)
-				return
-			}
-
 			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
 			if err != nil {
 				log.Printf("Invalid checkin ID %s: %v", csvRecord.CheckinID, err)
@@ -143,7 +138,7 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 			}
 
 			log.Printf("Backfilling checkin %d", checkinID)
-			if err := saveCSVRecord(ctx, store, csvRecord); err != nil {
+			if err := saveCSVRecord(ctx, store, cfg, csvRecord); err != nil {
 				log.Printf("Failed to save checkin %d: %v", checkinID, err)
 			}
 		}(record)
@@ -226,7 +221,7 @@ func checkinExists(ctx context.Context, store *storage.Client, cfg *config.Confi
 	return true, nil
 }
 
-func saveCSVRecord(ctx context.Context, store storage.Storage, record *CSVRecord) error {
+func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to parse created_at: %w", err)
@@ -246,5 +241,5 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, record *CSVRecord
 		ServingStyle: record.ServingType,
 	}
 
-	return photo.DownloadAndSave(ctx, store, record.PhotoURL, metadata)
+	return photo.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
 }

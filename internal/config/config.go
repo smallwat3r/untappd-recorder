@@ -12,6 +12,7 @@ type Config struct {
 	AWSRegion          string `env:"AWS_REGION"`
 	BucketName         string `env:"BUCKET_NAME,required"`
 	NumWorkers         int    `env:"NUM_WORKERS,required" envDefault:"10"`
+	MissingPhotoPath   string `env:"MISSING_PHOTO_PATH" envDefault:"img/missing.jpg"`
 }
 
 func Load() (*Config, error) {

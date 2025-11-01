@@ -60,7 +60,7 @@ func runRecord(ctx context.Context, store *storage.Client, cfg *config.Config) e
 				defer func() { <-semaphore }()
 
 				log.Printf("Processing checkin %d", c.CheckinID)
-				if err := saveCheckin(ctx, store, c); err != nil {
+				if err := saveCheckin(ctx, store, cfg, c); err != nil {
 					log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
 				}
 			}(checkin)
@@ -86,7 +86,7 @@ func runRecord(ctx context.Context, store *storage.Client, cfg *config.Config) e
 	return nil
 }
 
-func saveCheckin(ctx context.Context, store storage.Storage, checkin untappd.Checkin) error {
+func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin) error {
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
@@ -113,7 +113,7 @@ func saveCheckin(ctx context.Context, store storage.Storage, checkin untappd.Che
 		ServingStyle: checkin.ServingStyle,
 	}
 
-	return photo.DownloadAndSave(ctx, store, photoURL, metadata)
+	return photo.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
 }
 
 func getLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *config.Config) (int, error) {
