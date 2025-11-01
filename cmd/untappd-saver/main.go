@@ -10,8 +10,6 @@ import (
 	"github.com/smallwat3r/untappd-saver/internal/untappd"
 )
 
-const numWorkers = 10
-
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -32,12 +30,15 @@ func main() {
 	var wg sync.WaitGroup
 	checkinChan := make(chan untappd.Checkin, len(checkins))
 
-	for i := 0; i < numWorkers; i++ {
+	for i := 0; i < cfg.NumWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for checkin := range checkinChan {
-				r2Client.SaveCheckin(checkin)
+				log.Printf("Processing checkin %d", checkin.CheckinID)
+				if err := r2Client.SaveCheckin(checkin); err != nil {
+					log.Printf("Failed to save checkin %d: %v", checkin.CheckinID, err)
+				}
 			}
 		}()
 	}

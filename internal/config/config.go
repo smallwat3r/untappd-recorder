@@ -10,6 +10,7 @@ type Config struct {
 	R2AccessKeyID      string `env:"R2_ACCESS_KEY_ID,required"`
 	R2AccessKeySecret  string `env:"R2_ACCESS_KEY_SECRET,required"`
 	R2BucketName       string `env:"R2_BUCKET_NAME,required"`
+	NumWorkers         int    `env:"NUM_WORKERS,required" envDefault:"10"`
 }
 
 func Load() (*Config, error) {

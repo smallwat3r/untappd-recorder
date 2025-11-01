@@ -52,9 +52,9 @@ func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
 	}
 }
 
-func (c *R2Client) SaveCheckin(checkin untappd.Checkin) {
+func (c *R2Client) SaveCheckin(checkin untappd.Checkin) error {
 	if len(checkin.Media.Items) == 0 {
-		return
+		return nil
 	}
 
 	photoURL := checkin.Media.Items[0].Photo.PhotoImgOg
@@ -62,20 +62,17 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) {
 
 	resp, err := http.Get(photoURL)
 	if err != nil {
-		log.Printf("Failed to download photo %s: %v", photoURL, err)
-		return
+		return fmt.Errorf("failed to download photo %s: %w", photoURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Failed to download photo %s: status %s", photoURL, resp.Status)
-		return
+		return fmt.Errorf("failed to download photo %s: status %s", photoURL, resp.Status)
 	}
 
 	photoBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read photo bytes: %v", err)
-		return
+		return fmt.Errorf("failed to read photo bytes: %w", err)
 	}
 
 	key := fmt.Sprintf("%d.jpg", checkin.CheckinID)
@@ -96,10 +93,10 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) {
 		},
 	})
 	if err != nil {
-		log.Printf("Failed to upload photo to R2: %v", err)
-	} else {
-		fmt.Printf("Successfully uploaded %s to R2\n", key)
+		return fmt.Errorf("failed to upload photo to R2: %w", err)
 	}
+
+	return nil
 }
 
 func (c *R2Client) GetLatestCheckinID() (int, error) {
