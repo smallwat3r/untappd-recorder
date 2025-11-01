@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"path"
 	"strconv"
 	"sync"
@@ -16,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-saver/internal/config"
+	"github.com/smallwat3r/untappd-saver/internal/photo"
 	"github.com/smallwat3r/untappd-saver/internal/storage"
 	"github.com/smallwat3r/untappd-saver/internal/untappd"
 )
@@ -27,17 +26,22 @@ func main() {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
-	fmt.Println("Successfully loaded configuration.")
-
 	store, err := storage.NewClient(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Error creating storage client: %v", err)
 	}
 
+	if err := runRecord(ctx, store, cfg); err != nil {
+		log.Fatalf("Record failed: %v", err)
+	}
+	fmt.Println("Record completed successfully.")
+}
+
+func runRecord(ctx context.Context, store *storage.Client, cfg *config.Config) error {
 	untappdClient := untappd.NewClient(cfg)
 	latestCheckinIDKey, err := getLatestCheckinIDKey(ctx, store, cfg)
 	if err != nil {
-		log.Fatalf("Error getting latest checkin ID: %v", err)
+		return fmt.Errorf("error getting latest checkin ID: %w", err)
 	}
 
 	latestUpdated := false
@@ -56,7 +60,7 @@ func main() {
 				defer func() { <-semaphore }()
 
 				log.Printf("Processing checkin %d", c.CheckinID)
-				if err := saveCheckin(ctx, store, cfg, c); err != nil {
+				if err := saveCheckin(ctx, store, c); err != nil {
 					log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
 				}
 			}(checkin)
@@ -76,11 +80,13 @@ func main() {
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("Error fetching checkins: %v", err)
+		return fmt.Errorf("error fetching checkins: %w", err)
 	}
+
+	return nil
 }
 
-func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin) error {
+func saveCheckin(ctx context.Context, store storage.Storage, checkin untappd.Checkin) error {
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
@@ -93,29 +99,7 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		return nil
 	}
 
-	fmt.Printf("Found photo: %s\n", photoURL)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, photoURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request for photo %s: %w", photoURL, err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to download photo %s: %w", photoURL, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download photo %s: status %s", photoURL, resp.Status)
-	}
-
-	photoBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read photo bytes: %w", err)
-	}
-
-	metadata := storage.CheckinMetadata{
+	metadata := &storage.CheckinMetadata{
 		ID:           strconv.Itoa(checkin.CheckinID),
 		Beer:         checkin.Beer.BeerName,
 		Brewery:      checkin.Brewery.BreweryName,
@@ -129,7 +113,7 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		ServingStyle: checkin.ServingStyle,
 	}
 
-	return store.Upload(ctx, photoBytes, &metadata)
+	return photo.DownloadAndSave(ctx, store, photoURL, metadata)
 }
 
 func getLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *config.Config) (int, error) {

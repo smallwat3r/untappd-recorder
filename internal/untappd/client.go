@@ -37,6 +37,10 @@ func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcesso
 			q.Add("max_id", fmt.Sprintf("%d", maxID))
 		} else if sinceID != 0 {
 			q.Add("min_id", fmt.Sprintf("%d", sinceID))
+		} else {
+			// if sinceID is 0, it means we are starting from scratch, so we only
+			// want to fetch the first checkin and stop.
+			q.Add("limit", "1")
 		}
 		req.URL.RawQuery = q.Encode()
 
