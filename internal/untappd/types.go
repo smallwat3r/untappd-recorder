@@ -1,14 +1,20 @@
 package untappd
 
 type UntappdResponse struct {
-	Response struct {
-		Checkins struct {
-			Items []Checkin `json:"items"`
-		} `json:"checkins"`
-		Pagination struct {
-			MaxID int `json:"max_id"`
-		} `json:"pagination"`
-	} `json:"response"`
+	Response Response `json:"response"`
+}
+
+type Response struct {
+	Checkins   Checkins   `json:"checkins"`
+	Pagination Pagination `json:"pagination"`
+}
+
+type Checkins struct {
+	Items []Checkin `json:"items"`
+}
+
+type Pagination struct {
+	MaxID int `json:"max_id"`
 }
 
 type Checkin struct {
@@ -16,24 +22,22 @@ type Checkin struct {
 	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
 	CreatedAt      string  `json:"created_at"`
-	Media          struct {
-		Items []struct {
-			Photo struct {
-				PhotoImgOg string `json:"photo_img_og"`
-			} `json:"photo"`
-		} `json:"items"`
-	} `json:"media"`
-	Beer    Beer `json:"beer"`
-	Brewery struct {
-		BreweryName string `json:"brewery_name"`
-	} `json:"brewery"`
-	Venue struct {
-		VenueName string `json:"venue_name"`
-		Location  struct {
-			Lat float64 `json:"lat"`
-			Lng float64 `json:"lng"`
-		} `json:"location"`
-	} `json:"venue"`
+	Media          Media   `json:"media"`
+	Beer           Beer    `json:"beer"`
+	Brewery        Brewery `json:"brewery"`
+	Venue          Venue   `json:"venue"`
+}
+
+type Media struct {
+	Items []MediaItem `json:"items"`
+}
+
+type MediaItem struct {
+	Photo Photo `json:"photo"`
+}
+
+type Photo struct {
+	PhotoImgOg string `json:"photo_img_og"`
 }
 
 type Beer struct {
@@ -41,4 +45,18 @@ type Beer struct {
 	BeerStyle string  `json:"beer_style"`
 	BeerABV   float64 `json:"beer_abv"`
 	BeerImage string  `json:"beer_label"`
+}
+
+type Brewery struct {
+	BreweryName string `json:"brewery_name"`
+}
+
+type Venue struct {
+	VenueName string   `json:"venue_name"`
+	Location  Location `json:"location"`
+}
+
+type Location struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
 }

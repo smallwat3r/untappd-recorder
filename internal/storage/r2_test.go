@@ -74,61 +74,33 @@ func TestR2Client_SaveCheckin(t *testing.T) {
 
 	checkin := untappd.Checkin{
 		CheckinID: 12345,
-		Media: struct {
-			Items []struct {
-				Photo struct {
-					PhotoImgOg string `json:"photo_img_og"`
-				} `json:"photo"`
-			} `json:"items"`
-		}{
-			Items: []struct {
-				Photo struct {
-					PhotoImgOg string `json:"photo_img_og"`
-				} `json:"photo"`
-			}{
+		Media: untappd.Media{
+			Items: []untappd.MediaItem{
 				{
-					Photo: struct {
-						PhotoImgOg string `json:"photo_img_og"`
-					}{
+					Photo: untappd.Photo{
 						PhotoImgOg: server.URL,
 					},
 				},
 			},
 		},
-		Brewery: struct {
-			BreweryName string `json:"brewery_name"`
-		}{
+		Brewery: untappd.Brewery{
 			BreweryName: "test-brewery",
 		},
-		Beer: struct {
-			BeerName  string  `json:"beer_name"`
-			BeerStyle string  `json:"beer_style"`
-			BeerABV   float64 `json:"beer_abv"`
-			BeerImage string  `json:"beer_label"`
-		}{
+		Beer: untappd.Beer{
 			BeerName:  "test-beer",
 			BeerStyle: "IPA",
 			BeerABV:   6.7,
 		},
-		Venue: struct {
-			VenueName string `json:"venue_name"`
-			Location  struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			} `json:"location"`
-		}{
+		Venue: untappd.Venue{
 			VenueName: "test-venue",
-			Location: struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			}{
+			Location: untappd.Location{
 				Lat: 1.23,
 				Lng: 4.56,
 			},
 		},
 	}
 
-	client.SaveCheckin(checkin)
+	client.SaveCheckin(context.Background(), checkin)
 
 	if !putObjectCalled {
 		t.Errorf("expected PutObject to be called, but it wasn't")
@@ -217,7 +189,7 @@ func TestR2Client_GetLatestCheckinID(t *testing.T) {
 
 	client := NewR2Client(cfg, mockS3)
 
-	latestID, err := client.GetLatestCheckinID()
+	latestID, err := client.GetLatestCheckinID(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -242,7 +214,7 @@ func TestR2Client_GetLatestCheckinID_Empty(t *testing.T) {
 
 	client := NewR2Client(cfg, mockS3)
 
-	latestID, err := client.GetLatestCheckinID()
+	latestID, err := client.GetLatestCheckinID(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
