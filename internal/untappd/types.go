@@ -9,7 +9,7 @@ type UntappdResponse struct {
 }
 
 type Checkin struct {
-	CheckinComment string `json:"checkin_comment"`
+	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
 	Media          struct {
 		Items []struct {

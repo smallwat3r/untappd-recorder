@@ -73,12 +73,12 @@ func (c *R2Client) SaveCheckin(checkin untappd.Checkin) {
 		Key:    &key,
 		Body:   bytes.NewReader(photoBytes),
 		Metadata: map[string]string{
-			"beer":          checkin.Beer.BeerName,
-			"brewery":       checkin.Brewery.BreweryName,
-			"comment":       checkin.CheckinComment,
-			"rating":        fmt.Sprintf("%.2f", checkin.RatingScore),
-			"venue":         checkin.Venue.VenueName,
-			"date":          checkin.CreatedAt,
+			"beer":    checkin.Beer.BeerName,
+			"brewery": checkin.Brewery.BreweryName,
+			"comment": checkin.CheckinComment,
+			"rating":  fmt.Sprintf("%.2f", checkin.RatingScore),
+			"venue":   checkin.Venue.VenueName,
+			"date":    checkin.CreatedAt,
 		},
 	})
 	if err != nil {
