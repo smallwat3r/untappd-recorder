@@ -66,7 +66,7 @@ func newS3Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) Upload(ctx context.Context, file []byte, metadata *CheckinMetadata) error {
-	checkinTime, err := time.Parse("2006-01-02", metadata.Date)
+	checkinTime, err := time.Parse(time.RFC1123Z, metadata.Date)
 	if err != nil {
 		return fmt.Errorf("failed to parse checkin date %s: %w", metadata.Date, err)
 	}

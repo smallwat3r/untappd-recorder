@@ -175,7 +175,7 @@ func updateLatestCheckinIDKey(ctx context.Context, store storage.Storage, cfg *c
 		return fmt.Errorf("storage provider does not support CopyObject")
 	}
 
-	checkinTime, err := time.Parse("2006-01-02", checkin.CreatedAt)
+	checkinTime, err := time.Parse(time.RFC1123Z, checkin.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to parse checkin date %s: %w", checkin.CreatedAt, err)
 	}
