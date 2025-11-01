@@ -47,9 +47,10 @@ func main() {
 			}
 		}
 
-		// we set the first checkin to be the latest (most recent to oldest), so we remember
-		// from where to start next time the script runs.
 		if len(checkins) > 0 && !latestUpdated {
+			// create a copy of the first checkin (most recent to oldest), aliased as
+			// 'latest', so we do remember by which ID (from the metadata) to start next
+			// time this runs.
 			if err := updateLatestCheckinIDKey(ctx, store, cfg, checkins[0]); err != nil {
 				log.Printf("Failed to update latest checkin ID: %v", err)
 			}
