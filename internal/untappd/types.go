@@ -5,10 +5,14 @@ type UntappdResponse struct {
 		Checkins struct {
 			Items []Checkin `json:"items"`
 		} `json:"checkins"`
+		Pagination struct {
+			MaxID int `json:"max_id"`
+		} `json:"pagination"`
 	} `json:"response"`
 }
 
 type Checkin struct {
+	CheckinID      int     `json:"checkin_id"`
 	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
 	CreatedAt      string  `json:"created_at"`
@@ -20,7 +24,9 @@ type Checkin struct {
 		} `json:"items"`
 	} `json:"media"`
 	Beer struct {
-		BeerName string `json:"beer_name"`
+		BeerName  string  `json:"beer_name"`
+		BeerStyle string  `json:"beer_style"`
+		BeerABV   float64 `json:"beer_abv"`
 	} `json:"beer"`
 	Brewery struct {
 		BreweryName string `json:"brewery_name"`

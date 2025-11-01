@@ -21,20 +21,26 @@ func NewClient(cfg *config.Config) *Client {
 	}
 }
 
-func (c *Client) FetchCheckins() []Checkin {
+func (c *Client) FetchCheckins(sinceID int) []Checkin {
 	var allCheckins []Checkin
 	endpoint := "https://api.untappd.com/v4/user/checkins"
-
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		log.Fatalf("Failed to create request: %v", err)
-	}
-
-	q := req.URL.Query()
-	q.Add("access_token", c.cfg.UntappdAccessToken)
-	req.URL.RawQuery = q.Encode()
+	maxID := 0
 
 	for {
+		req, err := http.NewRequest("GET", endpoint, nil)
+		if err != nil {
+			log.Fatalf("Failed to create request: %v", err)
+		}
+
+		q := req.URL.Query()
+		q.Add("access_token", c.cfg.UntappdAccessToken)
+		if maxID != 0 {
+			q.Add("max_id", fmt.Sprintf("%d", maxID))
+		} else if sinceID != 0 {
+			q.Add("min_id", fmt.Sprintf("%d", sinceID))
+		}
+		req.URL.RawQuery = q.Encode()
+
 		resp, err := c.client.Do(req)
 		if err != nil {
 			log.Fatalf("Failed to send request: %v", err)
@@ -51,7 +57,10 @@ func (c *Client) FetchCheckins() []Checkin {
 		}
 
 		allCheckins = append(allCheckins, untappdResp.Response.Checkins.Items...)
-		break
+		if untappdResp.Response.Pagination.MaxID == 0 {
+			break
+		}
+		maxID = untappdResp.Response.Pagination.MaxID
 	}
 
 	fmt.Printf("Fetched %d check-ins.\n", len(allCheckins))
