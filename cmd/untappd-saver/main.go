@@ -19,7 +19,7 @@ func main() {
 
 	untappdClient := untappd.NewClient(cfg)
 	checkins := untappdClient.FetchCheckins()
-	r2Client := storage.NewR2Client(cfg)
+	r2Client := storage.New(cfg)
 	for _, checkin := range checkins {
 		r2Client.SaveCheckin(checkin)
 	}

@@ -16,12 +16,16 @@ import (
 	"github.com/smallwat3r/untappd-saver/internal/untappd"
 )
 
-type R2Client struct {
-	cfg      *config.Config
-	s3Client *s3.Client
+type S3Client interface {
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
-func NewR2Client(cfg *config.Config) *R2Client {
+type R2Client struct {
+	cfg      *config.Config
+	s3Client S3Client
+}
+
+func New(cfg *config.Config) *R2Client {
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2AccountID),
@@ -36,9 +40,13 @@ func NewR2Client(cfg *config.Config) *R2Client {
 		log.Fatalf("Failed to load AWS config: %v", err)
 	}
 
+	return NewR2Client(cfg, s3.NewFromConfig(awsCfg))
+}
+
+func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
 	return &R2Client{
 		cfg:      cfg,
-		s3Client: s3.NewFromConfig(awsCfg),
+		s3Client: s3Client,
 	}
 }
 

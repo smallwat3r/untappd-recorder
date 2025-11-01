@@ -11,6 +11,7 @@ type UntappdResponse struct {
 type Checkin struct {
 	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
+	CreatedAt      string  `json:"created_at"`
 	Media          struct {
 		Items []struct {
 			Photo struct {
