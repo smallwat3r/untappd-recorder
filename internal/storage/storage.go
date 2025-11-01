@@ -19,7 +19,7 @@ type S3Client interface {
 	CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 }
 
-// CheckinMetadata holds the metadata for a checkin photo
+// holds the metadata for a checkin photo
 type CheckinMetadata struct {
 	ID      string
 	Beer    string
@@ -33,7 +33,6 @@ type CheckinMetadata struct {
 	ABV     string
 }
 
-// ToMap converts the metadata struct to a map[string]string
 func (m *CheckinMetadata) ToMap() map[string]string {
 	return map[string]string{
 		"id":      m.ID,
