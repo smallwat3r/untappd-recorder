@@ -50,6 +50,11 @@ func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcesso
 			return fmt.Errorf("API request failed with status: %s", resp.Status)
 		}
 
+		if resp.Header.Get("X-Ratelimit-Remaining") == "0" {
+			fmt.Println("Untappd API rate limit reached. Stopping for now.")
+			break
+		}
+
 		var untappdResp UntappdResponse
 		if err := json.NewDecoder(resp.Body).Decode(&untappdResp); err != nil {
 			return fmt.Errorf("failed to decode response: %w", err)
