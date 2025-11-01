@@ -11,11 +11,14 @@ func TestLoad(t *testing.T) {
 		os.Setenv("R2_ACCOUNT_ID", "test_account_id")
 		os.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
 		os.Setenv("R2_ACCESS_KEY_SECRET", "test_key_secret")
-		os.Setenv("R2_BUCKET_NAME", "test_bucket_name")
+		os.Setenv("BUCKET_NAME", "test_bucket_name")
 
 		cfg, err := Load()
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
+		}
+		if cfg.BucketName != "test_bucket_name" {
+			t.Errorf("expected BucketName to be 'test_bucket_name', got %s", cfg.BucketName)
 		}
 
 		if cfg.UntappdAccessToken != "test_token" {

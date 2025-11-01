@@ -8,9 +8,9 @@ type Config struct {
 	UntappdAccessToken string `env:"UNTAPPD_ACCESS_TOKEN,required"`
 	R2AccountID        string `env:"R2_ACCOUNT_ID,required"`
 	R2AccessKeyID      string `env:"R2_ACCESS_KEY_ID,required"`
-	R2AccessKeySecret  string `env:"R2_ACCESS_KEY_SECRET,required"`
-	R2BucketName       string `env:"R2_BUCKET_NAME,required"`
-	R2Region           string `env:"R2_REGION" envDefault:"auto"`
+	R2AccessKeySecret  string `env:"R2_ACCESS_KEY_SECRET"`
+	AWSRegion          string `env:"AWS_REGION"`
+	BucketName         string `env:"BUCKET_NAME,required"`
 	NumWorkers         int    `env:"NUM_WORKERS,required" envDefault:"10"`
 }
 

@@ -1,5 +1,6 @@
 package untappd
 
+// UntappdResponse is the response from the Untappd API
 type UntappdResponse struct {
 	Response Response `json:"response"`
 }
@@ -17,6 +18,7 @@ type Pagination struct {
 	MaxID int `json:"max_id"`
 }
 
+// Checkin represents a single check-in from the Untappd API
 type Checkin struct {
 	CheckinID      int     `json:"checkin_id"`
 	CheckinComment string  `json:"checkin_comment"`
