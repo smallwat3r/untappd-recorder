@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -48,20 +46,8 @@ func New(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 	return NewR2Client(cfg, s3.NewFromConfig(awsCfg)), nil
 }
 
-func generateSanitizedKey(checkin untappd.Checkin) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9_]+`)
-	beerName := re.ReplaceAllString(checkin.Beer.BeerName, "_")
-	beerName = strings.Trim(beerName, "_")
-	createdAt := re.ReplaceAllString(checkin.CreatedAt, "_")
-	createdAt = strings.Trim(createdAt, "_")
-	keyParts := []string{strconv.Itoa(checkin.CheckinID)}
-	if beerName != "" {
-		keyParts = append(keyParts, beerName)
-	}
-	if createdAt != "" {
-		keyParts = append(keyParts, createdAt)
-	}
-	return fmt.Sprintf("%s.jpg", strings.Join(keyParts, "_"))
+func generateKey(checkin untappd.Checkin) string {
+	return fmt.Sprintf("%d.jpg", checkin.CheckinID)
 }
 
 func NewR2Client(cfg *config.Config, s3Client S3Client) *R2Client {
@@ -106,7 +92,7 @@ func (c *R2Client) SaveCheckin(ctx context.Context, checkin untappd.Checkin) err
 		return fmt.Errorf("failed to read photo bytes: %w", err)
 	}
 
-	key := generateSanitizedKey(checkin)
+	key := generateKey(checkin)
 	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: &c.cfg.R2BucketName,
 		Key:    &key,

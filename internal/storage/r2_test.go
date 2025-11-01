@@ -46,7 +46,7 @@ func TestR2Client_SaveCheckin(t *testing.T) {
 			if *params.Bucket != "test-bucket" {
 				t.Errorf("expected bucket to be 'test-bucket', got %s", *params.Bucket)
 			}
-			expectedKey := "12345_test_beer.jpg"
+			expectedKey := "12345.jpg"
 			if *params.Key != expectedKey {
 				t.Errorf("expected key to be '%s', got %s", expectedKey, *params.Key)
 			}
@@ -107,57 +107,16 @@ func TestR2Client_SaveCheckin(t *testing.T) {
 	}
 }
 
-func TestGenerateSanitizedKey(t *testing.T) {
-	tests := []struct {
-		name     string
-		checkin  untappd.Checkin
-		expected string
-	}{
-		{
-			name: "basic sanitization",
-			checkin: untappd.Checkin{
-				CheckinID: 123,
-				Beer:      untappd.Beer{BeerName: "My Awesome Beer"},
-				CreatedAt: "2023-10-26 10:00:00",
-			},
-			expected: "123_My_Awesome_Beer_2023_10_26_10_00_00.jpg",
-		},
-		{
-			name: "with special characters",
-			checkin: untappd.Checkin{
-				CheckinID: 456,
-				Beer:      untappd.Beer{BeerName: "Beer! With@Special#Chars$"},
-				CreatedAt: "2023-11-01 15:30:00",
-			},
-			expected: "456_Beer_With_Special_Chars_2023_11_01_15_30_00.jpg",
-		},
-		{
-			name: "empty beer name and date",
-			checkin: untappd.Checkin{
-				CheckinID: 789,
-				Beer:      untappd.Beer{BeerName: ""},
-				CreatedAt: "",
-			},
-			expected: "789.jpg",
-		},
-		{
-			name: "leading and trailing spaces",
-			checkin: untappd.Checkin{
-				CheckinID: 999,
-				Beer:      untappd.Beer{BeerName: "  Spaced Out Beer  "},
-				CreatedAt: "  2024-01-01 12:00:00  ",
-			},
-			expected: "999_Spaced_Out_Beer_2024_01_01_12_00_00.jpg",
-		},
+func TestGenerateKey(t *testing.T) {
+	checkin := untappd.Checkin{
+		CheckinID: 123,
+		Beer:      untappd.Beer{BeerName: "My Awesome Beer"},
+		CreatedAt: "2023-10-26 10:00:00",
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual := generateSanitizedKey(tt.checkin)
-			if actual != tt.expected {
-				t.Errorf("generateSanitizedKey(%+v) got %s, want %s", tt.checkin, actual, tt.expected)
-			}
-		})
+	expected := "123.jpg"
+	actual := generateKey(checkin)
+	if actual != expected {
+		t.Errorf("generateKey(%+v) got %s, want %s", checkin, actual, expected)
 	}
 }
 
