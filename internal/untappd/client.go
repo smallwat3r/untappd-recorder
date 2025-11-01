@@ -1,0 +1,59 @@
+package untappd
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/smallwat3r/untappd-saver/internal/config"
+)
+
+type Client struct {
+	cfg    *config.Config
+	client *http.Client
+}
+
+func NewClient(cfg *config.Config) *Client {
+	return &Client{
+		cfg:    cfg,
+		client: &http.Client{},
+	}
+}
+
+func (c *Client) FetchCheckins() []Checkin {
+	var allCheckins []Checkin
+	endpoint := "https://api.untappd.com/v4/user/checkins"
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		log.Fatalf("Failed to create request: %v", err)
+	}
+
+	q := req.URL.Query()
+	q.Add("access_token", c.cfg.UntappdAccessToken)
+	req.URL.RawQuery = q.Encode()
+
+	for {
+		resp, err := c.client.Do(req)
+		if err != nil {
+			log.Fatalf("Failed to send request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("API request failed with status: %s", resp.Status)
+		}
+
+		var untappdResp UntappdResponse
+		if err := json.NewDecoder(resp.Body).Decode(&untappdResp); err != nil {
+			log.Fatalf("Failed to decode response: %v", err)
+		}
+
+		allCheckins = append(allCheckins, untappdResp.Response.Checkins.Items...)
+		break
+	}
+
+	fmt.Printf("Fetched %d check-ins.\n", len(allCheckins))
+	return allCheckins
+}
