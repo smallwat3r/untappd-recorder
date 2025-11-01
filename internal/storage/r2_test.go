@@ -96,6 +96,7 @@ func TestR2Client_SaveCheckin(t *testing.T) {
 			BeerName  string  `json:"beer_name"`
 			BeerStyle string  `json:"beer_style"`
 			BeerABV   float64 `json:"beer_abv"`
+			BeerImage string  `json:"beer_label"`
 		}{
 			BeerName:  "test-beer",
 			BeerStyle: "IPA",

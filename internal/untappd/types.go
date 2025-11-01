@@ -27,6 +27,7 @@ type Checkin struct {
 		BeerName  string  `json:"beer_name"`
 		BeerStyle string  `json:"beer_style"`
 		BeerABV   float64 `json:"beer_abv"`
+		BeerImage string  `json:"beer_label"`
 	} `json:"beer"`
 	Brewery struct {
 		BreweryName string `json:"brewery_name"`
