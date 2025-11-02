@@ -78,7 +78,7 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test-token")
 	t.Setenv("R2_ACCOUNT_ID", "test-account-id")
 	t.Setenv("R2_ACCESS_KEY_ID", "test-key-id")
-	t.Setenv("R2_ACCESS_KEY_SECRET", "test-secret")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "test-secret")
 	t.Setenv("BUCKET_NAME", "test-bucket")
 	t.Setenv("NUM_WORKERS", "1")
 
@@ -135,7 +135,7 @@ func TestRun(t *testing.T) {
 	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test-token")
 	t.Setenv("R2_ACCOUNT_ID", "test-account-id")
 	t.Setenv("R2_ACCESS_KEY_ID", "test-key-id")
-	t.Setenv("R2_ACCESS_KEY_SECRET", "test-secret")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "test-secret")
 	t.Setenv("BUCKET_NAME", "test-bucket")
 	t.Setenv("NUM_WORKERS", "1")
 

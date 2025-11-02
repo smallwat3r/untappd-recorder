@@ -10,7 +10,7 @@ func TestLoad(t *testing.T) {
 		os.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
 		os.Setenv("R2_ACCOUNT_ID", "test_account_id")
 		os.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
-		os.Setenv("R2_ACCESS_KEY_SECRET", "test_key_secret")
+		os.Setenv("R2_SECRET_ACCESS_KEY", "test_key_secret")
 		os.Setenv("BUCKET_NAME", "test_bucket_name")
 
 		cfg, err := Load()

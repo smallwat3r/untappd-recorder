@@ -29,7 +29,7 @@ BUCKET_NAME="your_bucket_name"
 # For Cloudflare R2:
 R2_ACCOUNT_ID="your_r2_account_id"
 R2_ACCESS_KEY_ID="your_r2_access_key_id"
-R2_ACCESS_KEY_SECRET="your_r2_access_key_secret"
+R2_SECRET_ACCESS_KEY="your_r2_secret_access_key"
 
 # For AWS S3:
 AWS_REGION="your_aws_region" # e.g., us-east-1
