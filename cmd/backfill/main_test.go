@@ -13,10 +13,10 @@ import (
 )
 
 type mockStorage struct {
-	CheckinExistsFunc       func(ctx context.Context, checkinID, createdAt string) (bool, error)
-	UploadFunc              func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
-	DownloadFunc            func(ctx context.Context, fileName string) ([]byte, error)
-	GetLatestCheckinIDFunc  func(ctx context.Context) (int, error)
+	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	UploadFunc                func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
+	GetLatestCheckinIDFunc    func(ctx context.Context) (int, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
 }
 
