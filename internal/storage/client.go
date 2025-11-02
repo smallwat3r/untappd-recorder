@@ -113,7 +113,7 @@ func (c *Client) Upload(ctx context.Context, file []byte, md *CheckinMetadata) e
 		ContentType: aws.String("image/jpeg"),
 	})
 	if err != nil {
-		return fmt.Errorf("upload object %q: %w", key, err)
+		return fmt.Errorf("failed to upload object %q: %w", key, err)
 	}
 
 	return nil
@@ -191,7 +191,7 @@ func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
 func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
 	t, err := time.Parse(time.RFC1123Z, checkin.CreatedAt)
 	if err != nil {
-		return fmt.Errorf("parse checkin date %q: %w", checkin.CreatedAt, err)
+		return fmt.Errorf("failed to parse checkin date %q: %w", checkin.CreatedAt, err)
 	}
 
 	dir := t.Format("2006/01/02")
