@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -95,6 +96,8 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 	if err != nil {
 		return fmt.Errorf("could not read csv header: %w", err)
 	}
+	// remove Byte Order Mark (BOM) if present, often found in CSV files
+	header[0] = strings.TrimPrefix(header[0], "\ufeff")
 
 	records, err := reader.ReadAll()
 	if err != nil {
@@ -117,6 +120,8 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 				log.Printf("Error mapping record to CSVRecord: %v", err)
 				return
 			}
+
+			log.Printf("%s", csvRecord.BeerName)
 
 			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
 			if err != nil {
