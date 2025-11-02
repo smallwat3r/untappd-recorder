@@ -30,7 +30,7 @@ func main() {
 	if err := run(context.Background(), *csvPath, nil, nil); err != nil {
 		log.Fatalf("backfill failed: %v", err)
 	}
-	fmt.Println("backfill completed successfully.")
+	log.Println("backfill completed successfully.")
 }
 
 func run(
@@ -56,7 +56,7 @@ func run(
 		downloader = photo.NewDownloader()
 	}
 
-	fmt.Printf("Starting backfill from %s\n", csvPath)
+	log.Printf("Starting backfill from %s\n", csvPath)
 	return runBackfill(ctx, csvPath, store, cfg, downloader)
 }
 

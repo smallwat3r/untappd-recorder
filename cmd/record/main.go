@@ -19,7 +19,7 @@ func main() {
 	if err := run(context.Background(), nil, nil); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("record completed successfully.")
+	log.Println("record completed successfully.")
 }
 
 func run(ctx context.Context, store storage.Storage, untappdClient untappd.UntappdClient) error {

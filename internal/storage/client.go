@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"path"
 	"strconv"
@@ -165,7 +166,7 @@ func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
 		var nfe *types.NotFound
 		if errors.As(err, &nfe) {
 			// latest not present: start from scratch
-			fmt.Println("latest key not found, starting from scratch")
+			log.Println("latest key not found, starting from scratch")
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to head %q: %w", latestKey, err)
@@ -183,7 +184,7 @@ func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
 	}
 
 	checkinID := int(id64)
-	fmt.Printf("latest stored checkinID is: %d\n", checkinID)
+	log.Printf("latest stored checkinID is: %d\n", checkinID)
 	return checkinID, nil
 }
 

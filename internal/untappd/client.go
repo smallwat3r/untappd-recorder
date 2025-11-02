@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -57,7 +58,7 @@ func (c *Client) handleResponse(
 	}
 
 	if resp.Header.Get("X-Ratelimit-Remaining") == "0" {
-		fmt.Println("untappd API rate limit reached. Stopping for now.")
+		log.Println("untappd API rate limit reached. Stopping for now.")
 		return 0, true, nil
 	}
 
