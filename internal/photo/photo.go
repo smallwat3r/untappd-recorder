@@ -13,7 +13,7 @@ import (
 )
 
 var httpClient = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 15 * time.Second,
 }
 
 func DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
