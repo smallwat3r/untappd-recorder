@@ -54,7 +54,7 @@ func runRecorder(
 ) error {
 	latestCheckinID, err := store.GetLatestCheckinID(ctx)
 	if err != nil {
-		return fmt.Errorf("get latest checkin ID: %w", err)
+		return fmt.Errorf("failed to get latest checkin ID: %w", err)
 	}
 
 	proc := newCheckinProcessor(store, cfg, downloader)
@@ -69,18 +69,22 @@ func newCheckinProcessor(
 	var once sync.Once
 
 	return func(ctx context.Context, checkins []untappd.Checkin) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		if len(checkins) == 0 {
-			fmt.Printf("no checkins to process")
+			log.Printf("no checkins to process\n")
 			return nil
 		}
 
-		fmt.Printf("processing %d checkins\n", len(checkins))
+		log.Printf("processing %d checkins\n", len(checkins))
 		processCheckins(ctx, store, cfg, checkins, downloader)
 
-		// set the first (newest) checkin once so next run continues from there.
+		// first element should be newest, update once per FetchCheckins cycle
 		once.Do(func() {
 			if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
-				log.Printf("failed to update latest checkin ID: %v", err)
+				log.Printf("failed to update latest checkin ID: %v\n", err)
 			}
 		})
 		return nil
