@@ -42,18 +42,19 @@ func runRecorder(ctx context.Context, store *storage.Client, cfg *config.Config)
 		return fmt.Errorf("error getting latest checkin ID: %w", err)
 	}
 
-	latestUpdated := false
+	var once sync.Once
 	return untappdClient.FetchCheckins(ctx, latestCheckinIDKey, func(ctx context.Context, checkins []untappd.Checkin) error {
 		fmt.Printf("Processing %d checkins\n", len(checkins))
 		processCheckins(ctx, store, cfg, checkins)
 
-		// we set the first checkin to be the latest (most recent to oldest), so we remember
-		// from where to start next time the script runs.
-		if len(checkins) > 0 && !latestUpdated {
-			if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
-				log.Printf("Failed to update latest checkin ID: %v", err)
-			}
-			latestUpdated = true
+		// we set the first checkin to be the latest, so we remember from where
+		// to start next time the script runs.
+		if len(checkins) > 0 {
+			once.Do(func() {
+				if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
+					log.Printf("Failed to update latest checkin ID: %v", err)
+				}
+			})
 		}
 
 		return nil
@@ -73,9 +74,9 @@ func processCheckins(ctx context.Context, store *storage.Client, cfg *config.Con
 			defer func() { <-semaphore }()
 
 			log.Printf("Processing checkin %d", c.CheckinID)
-			if err := saveCheckin(ctx, store, cfg, c); err != nil {
-				log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
-			}
+			// if err := saveCheckin(ctx, store, cfg, c); err != nil {
+			// 	log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
+			// }
 		}(checkin)
 	}
 

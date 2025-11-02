@@ -120,7 +120,7 @@ func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, opt
 func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
 	headObj, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: &c.bucketName,
-		Key:    aws.String("latest"),
+		Key:    aws.String("latest.jpg"),
 	})
 	if err != nil {
 		var nfe *types.NotFound
@@ -160,6 +160,10 @@ func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Chec
 		Bucket:     &c.bucketName,
 		CopySource: aws.String(sourceKey),
 		Key:        &latestKey,
+		Metadata: map[string]string{
+			"id": strconv.Itoa(checkin.CheckinID),
+		},
+		MetadataDirective: types.MetadataDirectiveReplace,
 	})
 	return err
 }

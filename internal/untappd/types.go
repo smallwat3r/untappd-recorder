@@ -14,7 +14,7 @@ type Checkins struct {
 }
 
 type Pagination struct {
-	MaxID int `json:"max_id"`
+	SinceURL string `json:"since_url"`
 }
 
 type Checkin struct {
