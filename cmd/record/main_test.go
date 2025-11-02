@@ -31,7 +31,11 @@ func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd
 	return nil
 }
 
-func (m *mockStorage) Upload(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error {
+func (m *mockStorage) Upload(
+	ctx context.Context,
+	file []byte,
+	metadata *storage.CheckinMetadata,
+) error {
 	if m.UploadFunc != nil {
 		return m.UploadFunc(ctx, file, metadata)
 	}
@@ -45,7 +49,10 @@ func (m *mockStorage) Download(ctx context.Context, fileName string) ([]byte, er
 	return nil, nil
 }
 
-func (m *mockStorage) CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
+func (m *mockStorage) CheckinExists(
+	ctx context.Context,
+	checkinID, createdAt string,
+) (bool, error) {
 	if m.CheckinExistsFunc != nil {
 		return m.CheckinExistsFunc(ctx, checkinID, createdAt)
 	}
@@ -56,7 +63,11 @@ type mockUntappdClient struct {
 	FetchCheckinsFunc func(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []untappd.Checkin) error) error
 }
 
-func (m *mockUntappdClient) FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []untappd.Checkin) error) error {
+func (m *mockUntappdClient) FetchCheckins(
+	ctx context.Context,
+	sinceID int,
+	checkinProcessor func(context.Context, []untappd.Checkin) error,
+) error {
 	if m.FetchCheckinsFunc != nil {
 		return m.FetchCheckinsFunc(ctx, sinceID, checkinProcessor)
 	}
@@ -67,7 +78,13 @@ type mockDownloader struct {
 	DownloadAndSaveFunc func(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error
 }
 
-func (m *mockDownloader) DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+func (m *mockDownloader) DownloadAndSave(
+	ctx context.Context,
+	cfg *config.Config,
+	store storage.Storage,
+	photoURL string,
+	metadata *storage.CheckinMetadata,
+) error {
 	if m.DownloadAndSaveFunc != nil {
 		return m.DownloadAndSaveFunc(ctx, cfg, store, photoURL, metadata)
 	}

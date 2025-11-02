@@ -13,7 +13,11 @@ import (
 )
 
 type UntappdClient interface {
-	FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []Checkin) error) error
+	FetchCheckins(
+		ctx context.Context,
+		sinceID int,
+		checkinProcessor func(context.Context, []Checkin) error,
+	) error
 }
 
 type Client struct {
@@ -43,7 +47,11 @@ func extractCheckins(r *UntappdResponse) ([]Checkin, error) {
 	}
 }
 
-func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checkinProcessor func(context.Context, []Checkin) error) (int, bool, error) {
+func (c *Client) handleResponse(
+	ctx context.Context,
+	resp *http.Response,
+	checkinProcessor func(context.Context, []Checkin) error,
+) (int, bool, error) {
 	if resp.StatusCode != http.StatusOK {
 		return 0, true, fmt.Errorf("API request failed with status: %s", resp.Status)
 	}
@@ -103,7 +111,11 @@ func parseMinID(sinceURL string) (int, error) {
 	return minID, nil
 }
 
-func (c *Client) buildRequest(ctx context.Context, endpoint string, minID int) (*http.Request, error) {
+func (c *Client) buildRequest(
+	ctx context.Context,
+	endpoint string,
+	minID int,
+) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -123,7 +135,11 @@ func (c *Client) buildRequest(ctx context.Context, endpoint string, minID int) (
 	return req, nil
 }
 
-func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []Checkin) error) error {
+func (c *Client) FetchCheckins(
+	ctx context.Context,
+	sinceID int,
+	checkinProcessor func(context.Context, []Checkin) error,
+) error {
 	endpoint := "https://api.untappd.com/v4/user/checkins"
 	minID := sinceID
 

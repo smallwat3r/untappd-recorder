@@ -33,10 +33,14 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 	cfg := &config.Config{UntappdAccessToken: "test-token"}
 	client := newTestClient(cfg, mockClient)
 
-	err := client.FetchCheckins(context.Background(), 0, func(ctx context.Context, checkins []Checkin) error {
-		t.Error("checkinProcessor should not be called when rate limit is reached")
-		return nil
-	})
+	err := client.FetchCheckins(
+		context.Background(),
+		0,
+		func(ctx context.Context, checkins []Checkin) error {
+			t.Error("checkinProcessor should not be called when rate limit is reached")
+			return nil
+		},
+	)
 
 	if err != nil {
 		t.Errorf("FetchCheckins returned an error: %v", err)

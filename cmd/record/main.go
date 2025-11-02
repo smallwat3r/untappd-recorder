@@ -43,32 +43,48 @@ func run(ctx context.Context, store storage.Storage, untappdClient untappd.Untap
 	return runRecorder(ctx, store, cfg, untappdClient, downloader)
 }
 
-func runRecorder(ctx context.Context, store storage.Storage, cfg *config.Config, untappdClient untappd.UntappdClient, downloader photo.Downloader) error {
+func runRecorder(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	untappdClient untappd.UntappdClient,
+	downloader photo.Downloader,
+) error {
 	latestCheckinIDKey, err := store.GetLatestCheckinID(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting latest checkin ID: %w", err)
 	}
 
 	var once sync.Once
-	return untappdClient.FetchCheckins(ctx, latestCheckinIDKey, func(ctx context.Context, checkins []untappd.Checkin) error {
-		fmt.Printf("Processing %d checkins\n", len(checkins))
-		processCheckins(ctx, store, cfg, checkins, downloader)
+	return untappdClient.FetchCheckins(
+		ctx,
+		latestCheckinIDKey,
+		func(ctx context.Context, checkins []untappd.Checkin) error {
+			fmt.Printf("Processing %d checkins\n", len(checkins))
+			processCheckins(ctx, store, cfg, checkins, downloader)
 
-		// we set the first checkin to be the latest, so we remember from where
-		// to start next time the script runs.
-		if len(checkins) > 0 {
-			once.Do(func() {
-				if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
-					log.Printf("Failed to update latest checkin ID: %v", err)
-				}
-			})
-		}
+			// we set the first checkin to be the latest, so we remember from where
+			// to start next time the script runs.
+			if len(checkins) > 0 {
+				once.Do(func() {
+					if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
+						log.Printf("Failed to update latest checkin ID: %v", err)
+					}
+				})
+			}
 
-		return nil
-	})
+			return nil
+		},
+	)
 }
 
-func processCheckins(ctx context.Context, store storage.Storage, cfg *config.Config, checkins []untappd.Checkin, downloader photo.Downloader) {
+func processCheckins(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	checkins []untappd.Checkin,
+	downloader photo.Downloader,
+) {
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10)
 
@@ -90,7 +106,13 @@ func processCheckins(ctx context.Context, store storage.Storage, cfg *config.Con
 	wg.Wait()
 }
 
-func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin, downloader photo.Downloader) error {
+func saveCheckin(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	checkin untappd.Checkin,
+	downloader photo.Downloader,
+) error {
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg

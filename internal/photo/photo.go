@@ -13,7 +13,13 @@ import (
 )
 
 type Downloader interface {
-	DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error
+	DownloadAndSave(
+		ctx context.Context,
+		cfg *config.Config,
+		store storage.Storage,
+		photoURL string,
+		metadata *storage.CheckinMetadata,
+	) error
 }
 
 type DefaultDownloader struct{}
@@ -26,7 +32,13 @@ func NewDownloader() Downloader {
 	return &DefaultDownloader{}
 }
 
-func (d *DefaultDownloader) DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+func (d *DefaultDownloader) DownloadAndSave(
+	ctx context.Context,
+	cfg *config.Config,
+	store storage.Storage,
+	photoURL string,
+	metadata *storage.CheckinMetadata,
+) error {
 	var photoBytes []byte
 	var err error
 

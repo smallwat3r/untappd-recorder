@@ -22,7 +22,10 @@ func TestLoad(t *testing.T) {
 		}
 
 		if cfg.UntappdAccessToken != "test_token" {
-			t.Errorf("expected UntappdAccessToken to be 'test_token', got %s", cfg.UntappdAccessToken)
+			t.Errorf(
+				"expected UntappdAccessToken to be 'test_token', got %s",
+				cfg.UntappdAccessToken,
+			)
 		}
 	})
 

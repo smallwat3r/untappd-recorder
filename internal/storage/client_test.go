@@ -16,23 +16,43 @@ type mockS3Client struct {
 	listObjectsV2 func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 }
 
-func (m *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+func (m *mockS3Client) PutObject(
+	ctx context.Context,
+	params *s3.PutObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.PutObjectOutput, error) {
 	return m.putObject(ctx, params, optFns...)
 }
 
-func (m *mockS3Client) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+func (m *mockS3Client) GetObject(
+	ctx context.Context,
+	params *s3.GetObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.GetObjectOutput, error) {
 	return m.getObject(ctx, params, optFns...)
 }
 
-func (m *mockS3Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+func (m *mockS3Client) CopyObject(
+	ctx context.Context,
+	params *s3.CopyObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.CopyObjectOutput, error) {
 	return m.copyObject(ctx, params, optFns...)
 }
 
-func (m *mockS3Client) ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+func (m *mockS3Client) ListObjectsV2(
+	ctx context.Context,
+	params *s3.ListObjectsV2Input,
+	optFns ...func(*s3.Options),
+) (*s3.ListObjectsV2Output, error) {
 	return m.listObjectsV2(ctx, params, optFns...)
 }
 
-func (m *mockS3Client) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+func (m *mockS3Client) HeadObject(
+	ctx context.Context,
+	params *s3.HeadObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.HeadObjectOutput, error) {
 	if m.headObject == nil {
 		return nil, nil
 	}

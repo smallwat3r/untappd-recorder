@@ -32,7 +32,12 @@ func main() {
 	fmt.Println("Backfill completed successfully.")
 }
 
-func run(ctx context.Context, csvPath string, store storage.Storage, downloader photo.Downloader) error {
+func run(
+	ctx context.Context,
+	csvPath string,
+	store storage.Storage,
+	downloader photo.Downloader,
+) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("error loading configuration: %w", err)
@@ -89,7 +94,13 @@ type CSVRecord struct {
 	TotalComments             string
 }
 
-func runBackfill(ctx context.Context, csvPath string, store storage.Storage, cfg *config.Config, downloader photo.Downloader) error {
+func runBackfill(
+	ctx context.Context,
+	csvPath string,
+	store storage.Storage,
+	cfg *config.Config,
+	downloader photo.Downloader,
+) error {
 	file, err := os.Open(csvPath)
 	if err != nil {
 		return fmt.Errorf("could not open csv file: %w", err)
@@ -113,7 +124,14 @@ func runBackfill(ctx context.Context, csvPath string, store storage.Storage, cfg
 	return nil
 }
 
-func processCSVRecords(ctx context.Context, store storage.Storage, cfg *config.Config, records [][]string, header []string, downloader photo.Downloader) {
+func processCSVRecords(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	records [][]string,
+	header []string,
+	downloader photo.Downloader,
+) {
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10)
 
@@ -162,7 +180,11 @@ func processCSVRecords(ctx context.Context, store storage.Storage, cfg *config.C
 
 func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
 	if len(record) != len(header) {
-		return nil, fmt.Errorf("record length (%d) does not match header length (%d)", len(record), len(header))
+		return nil, fmt.Errorf(
+			"record length (%d) does not match header length (%d)",
+			len(record),
+			len(header),
+		)
 	}
 
 	recordMap := make(map[string]string)
@@ -219,7 +241,13 @@ func formatFromAtHomeVenue(value, venue string) string {
 	return value
 }
 
-func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord, downloader photo.Downloader) error {
+func saveCSVRecord(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	record *CSVRecord,
+	downloader photo.Downloader,
+) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to parse created_at: %w", err)

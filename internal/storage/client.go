@@ -35,15 +35,20 @@ func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
 }
 
 func newR2Client(ctx context.Context, cfg *config.Config) (*Client, error) {
-	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2AccountID),
-		}, nil
-	})
+	r2Resolver := aws.EndpointResolverWithOptionsFunc(
+		func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2AccountID),
+			}, nil
+		},
+	)
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+	awsCfg, err := awsconfig.LoadDefaultConfig(
+		ctx,
 		awsconfig.WithEndpointResolverWithOptions(r2Resolver),
-		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2AccessKeySecret, "")),
+		awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2AccessKeySecret, ""),
+		),
 		awsconfig.WithRegion("auto"),
 	)
 	if err != nil {
@@ -105,15 +110,27 @@ func (c *Client) Download(ctx context.Context, fileName string) ([]byte, error) 
 	return io.ReadAll(output.Body)
 }
 
-func (c *Client) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+func (c *Client) HeadObject(
+	ctx context.Context,
+	params *s3.HeadObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.HeadObjectOutput, error) {
 	return c.s3Client.HeadObject(ctx, params, optFns...)
 }
 
-func (c *Client) ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+func (c *Client) ListObjectsV2(
+	ctx context.Context,
+	params *s3.ListObjectsV2Input,
+	optFns ...func(*s3.Options),
+) (*s3.ListObjectsV2Output, error) {
 	return c.s3Client.ListObjectsV2(ctx, params, optFns...)
 }
 
-func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
+func (c *Client) CopyObject(
+	ctx context.Context,
+	params *s3.CopyObjectInput,
+	optFns ...func(*s3.Options),
+) (*s3.CopyObjectOutput, error) {
 	return c.s3Client.CopyObject(ctx, params, optFns...)
 }
 
