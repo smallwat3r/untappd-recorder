@@ -15,6 +15,7 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 func main() {
@@ -211,6 +212,13 @@ func formatLatLng(record *CSVRecord) string {
 	return fmt.Sprintf("%s,%s", record.VenueLat, record.VenueLng)
 }
 
+func formatFromAtHomeVenue(value, venue string) string {
+	if venue == untappd.VenueUntappdAtHome {
+		return ""
+	}
+	return value
+}
+
 func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord, downloader photo.Downloader) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
@@ -225,11 +233,11 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 		Comment:        record.Comment,
 		Rating:         record.RatingScore,
 		Venue:          record.VenueName,
-		City:           record.VenueCity,
-		State:          record.VenueState,
-		Country:        record.VenueCountry,
+		City:           formatFromAtHomeVenue(record.VenueCity, record.VenueName),
+		State:          formatFromAtHomeVenue(record.VenueState, record.VenueName),
+		Country:        formatFromAtHomeVenue(record.VenueCountry, record.VenueName),
+		LatLng:         formatFromAtHomeVenue(formatLatLng(record), record.VenueName),
 		Date:           createdAt.Format(time.RFC1123Z),
-		LatLng:         formatLatLng(record),
 		Style:          record.BeerType,
 		ABV:            record.BeerABV,
 	}

@@ -2,6 +2,8 @@ package untappd
 
 import "fmt"
 
+const VenueUntappdAtHome = "Untappd at Home"
+
 type UntappdResponse struct {
 	Response Response `json:"response"`
 }
@@ -74,28 +76,28 @@ func (v *Venue) Name() string {
 }
 
 func (v *Venue) City() string {
-	if v == nil || v.VenueName == "Untappd at Home" {
+	if v == nil || v.VenueName == VenueUntappdAtHome {
 		return ""
 	}
 	return v.Location.City
 }
 
 func (v *Venue) State() string {
-	if v == nil || v.VenueName == "Untappd at Home" {
+	if v == nil || v.VenueName == VenueUntappdAtHome {
 		return ""
 	}
 	return v.Location.State
 }
 
 func (v *Venue) Country() string {
-	if v == nil || v.VenueName == "Untappd at Home" {
+	if v == nil || v.VenueName == VenueUntappdAtHome {
 		return ""
 	}
 	return v.Location.Country
 }
 
 func (v *Venue) LatLng() string {
-	if v == nil || v.VenueName == "Untappd at Home" {
+	if v == nil || v.VenueName == VenueUntappdAtHome {
 		return ""
 	}
 	return fmt.Sprintf("%f,%f", v.Location.Lat, v.Location.Lng)
