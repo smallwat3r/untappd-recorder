@@ -103,9 +103,8 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 			}
 			return util.FormatLatLng(checkin.Venue.Location.Lat, checkin.Venue.Location.Lng)
 		}(),
-		Style:        checkin.Beer.BeerStyle,
-		ABV:          fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
-		ServingStyle: checkin.ServingStyle,
+		Style: checkin.Beer.BeerStyle,
+		ABV:   fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
 	return photo.DownloadAndSave(ctx, cfg, store, photoURL, metadata)

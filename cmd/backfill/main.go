@@ -71,7 +71,6 @@ type CSVRecord struct {
 	BreweryState              string
 	FlavorProfiles            string
 	PurchaseVenue             string
-	ServingType               string
 	CheckinID                 string
 	BID                       string
 	BreweryID                 string
@@ -189,7 +188,6 @@ func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
 		BreweryState:              recordMap["brewery_state"],
 		FlavorProfiles:            recordMap["flavor_profiles"],
 		PurchaseVenue:             recordMap["purchase_venue"],
-		ServingType:               recordMap["serving_type"],
 		CheckinID:                 recordMap["checkin_id"],
 		BID:                       recordMap["bid"],
 		BreweryID:                 recordMap["brewery_id"],
@@ -227,17 +225,16 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 	}
 
 	metadata := &storage.CheckinMetadata{
-		ID:           record.CheckinID,
-		Beer:         record.BeerName,
-		Brewery:      record.BreweryName,
-		Comment:      record.Comment,
-		Rating:       record.RatingScore,
-		Venue:        record.VenueName,
-		Date:         createdAt.Format(time.RFC1123Z),
-		LatLng:       formatLatLng(record),
-		Style:        record.BeerType,
-		ABV:          record.BeerABV,
-		ServingStyle: record.ServingType,
+		ID:      record.CheckinID,
+		Beer:    record.BeerName,
+		Brewery: record.BreweryName,
+		Comment: record.Comment,
+		Rating:  record.RatingScore,
+		Venue:   record.VenueName,
+		Date:    createdAt.Format(time.RFC1123Z),
+		LatLng:  formatLatLng(record),
+		Style:   record.BeerType,
+		ABV:     record.BeerABV,
 	}
 
 	return photo.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)

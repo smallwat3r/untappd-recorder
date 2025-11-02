@@ -21,7 +21,6 @@ type Checkin struct {
 	CheckinID      int     `json:"checkin_id"`
 	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
-	ServingStyle   string  `json:"serving_style"`
 	CreatedAt      string  `json:"created_at"`
 	Media          Media   `json:"media"`
 	Beer           Beer    `json:"beer"`
