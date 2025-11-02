@@ -15,7 +15,6 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
-	"github.com/smallwat3r/untappd-recorder/internal/util"
 )
 
 func main() {
@@ -199,21 +198,10 @@ func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
 }
 
 func formatLatLng(record *CSVRecord) string {
-	if record.VenueName == "" {
+	if record.VenueLat == "" || record.VenueLng == "" {
 		return ""
 	}
-
-	lat, err := strconv.ParseFloat(record.VenueLat, 64)
-	if err != nil {
-		return ""
-	}
-
-	lng, err := strconv.ParseFloat(record.VenueLng, 64)
-	if err != nil {
-		return ""
-	}
-
-	return util.FormatLatLng(lat, lng)
+	return fmt.Sprintf("%s,%s", record.VenueLat, record.VenueLng)
 }
 
 func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord) error {
@@ -229,6 +217,8 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 		Comment: record.Comment,
 		Rating:  record.RatingScore,
 		Venue:   record.VenueName,
+		City:    record.VenueCity,
+		Country: record.VenueCountry,
 		Date:    createdAt.Format(time.RFC1123Z),
 		LatLng:  formatLatLng(record),
 		Style:   record.BeerType,

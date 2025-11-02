@@ -1,5 +1,7 @@
 package untappd
 
+import "fmt"
+
 type UntappdResponse struct {
 	Response Response `json:"response"`
 }
@@ -56,6 +58,36 @@ type Venue struct {
 }
 
 type Location struct {
-	Lat float64 `json:"lat"`
-	Lng float64 `json:"lng"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
+	City    string  `json:"venue_city"`
+	Country string  `json:"country_name"`
+}
+
+func (v *Venue) Name() string {
+	if v == nil {
+		return ""
+	}
+	return v.VenueName
+}
+
+func (v *Venue) City() string {
+	if v == nil {
+		return ""
+	}
+	return v.Location.City
+}
+
+func (v *Venue) Country() string {
+	if v == nil {
+		return ""
+	}
+	return v.Location.Country
+}
+
+func (v *Venue) LatLng() string {
+	if v == nil {
+		return ""
+	}
+	return fmt.Sprintf("%f,%f", v.Location.Lat, v.Location.Lng)
 }

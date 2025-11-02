@@ -27,6 +27,8 @@ type CheckinMetadata struct {
 	Comment string
 	Rating  string
 	Venue   string
+	City    string
+	Country string
 	Date    string
 	LatLng  string
 	Style   string
@@ -41,6 +43,8 @@ func (m *CheckinMetadata) ToMap() map[string]string {
 		"comment": m.Comment,
 		"rating":  m.Rating,
 		"venue":   m.Venue,
+		"city":    m.City,
+		"country": m.Country,
 		"date":    m.Date,
 		"latlng":  m.LatLng,
 		"style":   m.Style,

@@ -11,7 +11,6 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"github.com/smallwat3r/untappd-recorder/internal/util"
 )
 
 func main() {
@@ -95,16 +94,13 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		Brewery: checkin.Brewery.BreweryName,
 		Comment: checkin.CheckinComment,
 		Rating:  fmt.Sprintf("%.2f", checkin.RatingScore),
-		Venue:   checkin.Venue.VenueName,
+		Venue:   checkin.Venue.Name(),
+		City:    checkin.Venue.City(),
+		Country: checkin.Venue.Country(),
 		Date:    checkin.CreatedAt,
-		LatLng: func() string {
-			if checkin.Venue.VenueName == "" {
-				return ""
-			}
-			return util.FormatLatLng(checkin.Venue.Location.Lat, checkin.Venue.Location.Lng)
-		}(),
-		Style: checkin.Beer.BeerStyle,
-		ABV:   fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
+		LatLng:  checkin.Venue.LatLng(),
+		Style:   checkin.Beer.BeerStyle,
+		ABV:     fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
 	return photo.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
