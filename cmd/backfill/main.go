@@ -25,25 +25,32 @@ func main() {
 		log.Fatal("-csv is required for backfill command")
 	}
 
-	if err := run(context.Background(), *csvPath); err != nil {
+	if err := run(context.Background(), *csvPath, nil, nil); err != nil {
 		log.Fatalf("Backfill failed: %v", err)
 	}
 	fmt.Println("Backfill completed successfully.")
 }
 
-func run(ctx context.Context, csvPath string) error {
+func run(ctx context.Context, csvPath string, store storage.Storage, downloader photo.Downloader) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("error loading configuration: %w", err)
 	}
 
-	store, err := storage.NewClient(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("error creating storage client: %w", err)
+	if store == nil {
+		s, err := storage.NewClient(ctx, cfg)
+		if err != nil {
+			return fmt.Errorf("error creating storage client: %w", err)
+		}
+		store = s
+	}
+
+	if downloader == nil {
+		downloader = photo.NewDownloader()
 	}
 
 	fmt.Printf("Starting backfill from %s\n", csvPath)
-	return runBackfill(ctx, csvPath, store, cfg)
+	return runBackfill(ctx, csvPath, store, cfg, downloader)
 }
 
 // matches the structure of the Untappd CSV export.
@@ -81,7 +88,7 @@ type CSVRecord struct {
 	TotalComments             string
 }
 
-func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg *config.Config) error {
+func runBackfill(ctx context.Context, csvPath string, store storage.Storage, cfg *config.Config, downloader photo.Downloader) error {
 	file, err := os.Open(csvPath)
 	if err != nil {
 		return fmt.Errorf("could not open csv file: %w", err)
@@ -101,11 +108,11 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 		return fmt.Errorf("could not read csv records: %w", err)
 	}
 
-	processCSVRecords(ctx, store, cfg, records, header)
+	processCSVRecords(ctx, store, cfg, records, header, downloader)
 	return nil
 }
 
-func processCSVRecords(ctx context.Context, store *storage.Client, cfg *config.Config, records [][]string, header []string) {
+func processCSVRecords(ctx context.Context, store storage.Storage, cfg *config.Config, records [][]string, header []string, downloader photo.Downloader) {
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10)
 
@@ -143,7 +150,7 @@ func processCSVRecords(ctx context.Context, store *storage.Client, cfg *config.C
 			}
 
 			log.Printf("Backfilling checkin %d", checkinID)
-			if err := saveCSVRecord(ctx, store, cfg, csvRecord); err != nil {
+			if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
 				log.Printf("Failed to save checkin %d: %v", checkinID, err)
 			}
 		}(record)
@@ -204,7 +211,7 @@ func formatLatLng(record *CSVRecord) string {
 	return fmt.Sprintf("%s,%s", record.VenueLat, record.VenueLng)
 }
 
-func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord) error {
+func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord, downloader photo.Downloader) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to parse created_at: %w", err)
@@ -227,5 +234,5 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 		ABV:            record.BeerABV,
 	}
 
-	return photo.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
+	return downloader.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
 }

@@ -9,6 +9,7 @@ import (
 type Storage interface {
 	Upload(ctx context.Context, file []byte, metadata *CheckinMetadata) error
 	Download(ctx context.Context, fileName string) ([]byte, error)
+	CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error)
 }
 
 type S3Client interface {

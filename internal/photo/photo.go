@@ -12,21 +12,31 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
 
+type Downloader interface {
+	DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error
+}
+
+type DefaultDownloader struct{}
+
 var httpClient = &http.Client{
 	Timeout: 15 * time.Second,
 }
 
-func DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+func NewDownloader() Downloader {
+	return &DefaultDownloader{}
+}
+
+func (d *DefaultDownloader) DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
 	var photoBytes []byte
 	var err error
 
 	if photoURL == "" {
 		photoBytes, err = usePlaceholderPhoto(cfg.PlaceholderPhotoPath)
 		if err != nil {
-			return fmt.Errorf("failed to get missing photo: %w", err)
+			return fmt.Errorf("failed to get placeholder photo: %w", err)
 		}
 	} else {
-		photoBytes, err = downloadPhoto(ctx, photoURL)
+		photoBytes, err = d.downloadPhoto(ctx, photoURL)
 		if err != nil {
 			return fmt.Errorf("failed to download photo: %w", err)
 		}
@@ -44,7 +54,7 @@ func usePlaceholderPhoto(path string) ([]byte, error) {
 	return photoBytes, nil
 }
 
-func downloadPhoto(ctx context.Context, url string) ([]byte, error) {
+func (d *DefaultDownloader) downloadPhoto(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request for photo %s: %w", url, err)

@@ -105,5 +105,6 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		ABV:            fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
-	return photo.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
+	downloader := photo.NewDownloader()
+	return downloader.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
 }
