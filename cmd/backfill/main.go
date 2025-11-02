@@ -27,9 +27,9 @@ func main() {
 	}
 
 	if err := run(context.Background(), *csvPath, nil, nil); err != nil {
-		log.Fatalf("Backfill failed: %v", err)
+		log.Fatalf("backfill failed: %v", err)
 	}
-	fmt.Println("Backfill completed successfully.")
+	fmt.Println("backfill completed successfully.")
 }
 
 func run(
@@ -145,32 +145,32 @@ func processCSVRecords(
 
 			csvRecord, err := recordToCSVRecord(rec, header)
 			if err != nil {
-				log.Printf("Error mapping record to CSVRecord: %v", err)
+				log.Printf("error mapping record to CSVRecord: %v", err)
 				return
 			}
 
 			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
 			if err != nil {
-				log.Printf("Invalid checkin ID %s: %v", csvRecord.CheckinID, err)
+				log.Printf("invalid checkin ID %s: %v", csvRecord.CheckinID, err)
 				return
 			}
 
-			log.Printf("Processing checkin %d", checkinID)
+			log.Printf("processing checkin %d", checkinID)
 
 			exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
 			if err != nil {
-				log.Printf("Error checking if checkin %d exists: %v", checkinID, err)
+				log.Printf("error checking if checkin %d exists: %v", checkinID, err)
 				return
 			}
 
 			if exists {
-				log.Printf("Checkin %d already exists, skipping", checkinID)
+				log.Printf("checkin %d already exists, skipping", checkinID)
 				return
 			}
 
-			log.Printf("Backfilling checkin %d", checkinID)
+			log.Printf("backfilling checkin %d", checkinID)
 			if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
-				log.Printf("Failed to save checkin %d: %v", checkinID, err)
+				log.Printf("failed to save checkin %d: %v", checkinID, err)
 			}
 		}(record)
 	}
