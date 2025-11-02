@@ -30,6 +30,19 @@ func NewClient(cfg *config.Config) UntappdClient {
 	}
 }
 
+func extractCheckins(r *UntappdResponse) ([]Checkin, error) {
+	// when passing min_id in the querystring, the API bypasses checkins and
+	// return items directly, we check here which one we should use.
+	switch {
+	case r.Response.Checkins != nil:
+		return r.Response.Checkins.Items, nil
+	case r.Response.Items != nil:
+		return *r.Response.Items, nil
+	default:
+		return nil, fmt.Errorf("no checkins found in response")
+	}
+}
+
 func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checkinProcessor func(context.Context, []Checkin) error) (int, bool, error) {
 	if resp.StatusCode != http.StatusOK {
 		return 0, true, fmt.Errorf("API request failed with status: %s", resp.Status)
@@ -45,19 +58,10 @@ func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checki
 		return 0, true, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// when passing min_id in the querystring, the API bypasses checkins and
-	// return items directly, we check here which one we should use.
-	var checkins []Checkin
-	if untappdResp.Response.Checkins != nil {
-		checkins = untappdResp.Response.Checkins.Items
-	} else if untappdResp.Response.Items != nil {
-		checkins = *untappdResp.Response.Items
-	} else {
-		return 0, true, fmt.Errorf("no checkins or items found in Untappd response")
+	checkins, err := extractCheckins(&untappdResp)
+	if err != nil {
+		return 0, true, err
 	}
-
-	var paginationSinceURL string
-	paginationSinceURL = untappdResp.Response.Pagination.SinceURL
 
 	if len(checkins) == 0 {
 		return 0, true, nil
@@ -67,13 +71,14 @@ func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checki
 		return 0, true, fmt.Errorf("failed to process checkins: %w", err)
 	}
 
-	if paginationSinceURL == "" {
+	sinceURL := untappdResp.Response.Pagination.SinceURL
+	if sinceURL == "" {
 		return 0, true, nil
 	}
 
-	nextMinID, err := parseMinID(paginationSinceURL)
+	nextMinID, err := parseMinID(sinceURL)
 	if err != nil {
-		return 0, true, fmt.Errorf("failed to parse min_id from since_url: %w", err)
+		return 0, true, fmt.Errorf("failed to parse min_id from since_url %q: %w", sinceURL, err)
 	}
 
 	return nextMinID, false, nil
