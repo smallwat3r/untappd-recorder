@@ -124,8 +124,6 @@ func processCSVRecords(ctx context.Context, store *storage.Client, cfg *config.C
 				return
 			}
 
-			log.Printf("%s", csvRecord.BeerName)
-
 			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
 			if err != nil {
 				log.Printf("Invalid checkin ID %s: %v", csvRecord.CheckinID, err)
