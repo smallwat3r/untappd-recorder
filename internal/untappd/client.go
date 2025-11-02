@@ -107,7 +107,7 @@ func (c *Client) buildRequest(ctx context.Context, endpoint string, minID int) (
 	q := req.URL.Query()
 	q.Add("access_token", c.cfg.UntappdAccessToken)
 	if minID != 0 {
-		q.Add("min_id", fmt.Sprintf("%d", minID))
+		q.Add("min_id", strconv.Itoa(minID))
 	} else {
 		// if sinceID is 0, it means we are starting from scratch, so we only
 		// want to fetch the first checkin and stop.
