@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.20
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.1
 	github.com/caarlos0/env/v6 v6.10.1
+	golang.org/x/sync v0.17.0
 )
 
 require (

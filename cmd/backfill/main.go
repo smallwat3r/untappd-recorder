@@ -9,8 +9,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
@@ -132,50 +133,53 @@ func processCSVRecords(
 	header []string,
 	downloader photo.Downloader,
 ) {
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 10)
+	g, ctx := errgroup.WithContext(ctx)
+	if cfg.NumWorkers > 0 {
+		g.SetLimit(cfg.NumWorkers)
+	}
 
-	for _, record := range records {
-		wg.Add(1)
-		semaphore <- struct{}{}
-
-		go func(rec []string) {
-			defer wg.Done()
-			defer func() { <-semaphore }()
-
+	for _, rec := range records {
+		rec := rec // capture
+		g.Go(func() error {
 			csvRecord, err := recordToCSVRecord(rec, header)
 			if err != nil {
-				log.Printf("error mapping record to CSVRecord: %v", err)
-				return
+				log.Printf("error mapping record -> CSVRecord: %v", err)
+				return nil
 			}
 
 			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
 			if err != nil {
-				log.Printf("invalid checkin ID %s: %v", csvRecord.CheckinID, err)
-				return
+				log.Printf("invalid checkin ID %q: %v", csvRecord.CheckinID, err)
+				return nil
+			}
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
 			}
 
 			log.Printf("processing checkin %d", checkinID)
 
 			exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
 			if err != nil {
-				log.Printf("error checking if checkin %d exists: %v", checkinID, err)
-				return
+				log.Printf("failed checking exists(%d): %v", checkinID, err)
+				return nil
 			}
-
 			if exists {
-				log.Printf("checkin %d already exists, skipping", checkinID)
-				return
+				log.Printf("checkin %d exists, skipping", checkinID)
+				return nil
 			}
 
 			log.Printf("backfilling checkin %d", checkinID)
 			if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
-				log.Printf("failed to save checkin %d: %v", checkinID, err)
+				log.Printf("failed save(%d): %v", checkinID, err)
 			}
-		}(record)
+			return nil
+		})
 	}
 
-	wg.Wait()
+	_ = g.Wait()
 }
 
 func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {

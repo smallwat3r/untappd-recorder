@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
@@ -75,7 +77,7 @@ func newCheckinProcessor(
 		fmt.Printf("processing %d checkins\n", len(checkins))
 		processCheckins(ctx, store, cfg, checkins, downloader)
 
-		// Set the first (newest) checkin once so next run continues from there.
+		// set the first (newest) checkin once so next run continues from there.
 		once.Do(func() {
 			if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
 				log.Printf("failed to update latest checkin ID: %v", err)
@@ -92,25 +94,31 @@ func processCheckins(
 	checkins []untappd.Checkin,
 	downloader photo.Downloader,
 ) {
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 10)
+	g, ctx := errgroup.WithContext(ctx)
+	workers := cfg.NumWorkers
+	if workers <= 0 {
+		workers = 10
+	}
+	g.SetLimit(workers)
 
-	for _, checkin := range checkins {
-		wg.Add(1)
-		semaphore <- struct{}{}
-
-		go func(c untappd.Checkin) {
-			defer wg.Done()
-			defer func() { <-semaphore }()
+	for _, c := range checkins {
+		c := c // capture
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 
 			log.Printf("processing checkin %d", c.CheckinID)
 			if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
 				log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
 			}
-		}(checkin)
+			return nil
+		})
 	}
 
-	wg.Wait()
+	_ = g.Wait()
 }
 
 func saveCheckin(
