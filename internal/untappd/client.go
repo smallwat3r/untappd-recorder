@@ -30,7 +30,7 @@ func NewClient(cfg *config.Config) UntappdClient {
 	}
 }
 
-func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checkinProcessor func(context.Context, []Checkin) error, minIDInQuery bool) (int, bool, error) {
+func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checkinProcessor func(context.Context, []Checkin) error) (int, bool, error) {
 	if resp.StatusCode != http.StatusOK {
 		return 0, true, fmt.Errorf("API request failed with status: %s", resp.Status)
 	}
@@ -40,26 +40,24 @@ func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checki
 		return 0, true, nil
 	}
 
-	var checkins []Checkin
-	var paginationSinceURL string
-
-	// a bit ugly, but for some reason the API does not return the same data shape if `min_id`
-	// is passed to the querystring.
-	if minIDInQuery {
-		var untappdRespMinID UntappdResponseMinID
-		if err := json.NewDecoder(resp.Body).Decode(&untappdRespMinID); err != nil {
-			return 0, true, fmt.Errorf("failed to decode response with min_id: %w", err)
-		}
-		checkins = untappdRespMinID.Response.Items
-		paginationSinceURL = untappdRespMinID.Response.Pagination.SinceURL
-	} else {
-		var untappdResp UntappdResponse
-		if err := json.NewDecoder(resp.Body).Decode(&untappdResp); err != nil {
-			return 0, true, fmt.Errorf("failed to decode response: %w", err)
-		}
-		checkins = untappdResp.Response.Checkins.Items
-		paginationSinceURL = untappdResp.Response.Pagination.SinceURL
+	var untappdResp UntappdResponse
+	if err := json.NewDecoder(resp.Body).Decode(&untappdResp); err != nil {
+		return 0, true, fmt.Errorf("failed to decode response: %w", err)
 	}
+
+	// when passing min_id in the querystring, the API bypasses checkins and
+	// return items directly, we check here which one we should use.
+	var checkins []Checkin
+	if untappdResp.Response.Checkins != nil {
+		checkins = untappdResp.Response.Checkins.Items
+	} else if untappdResp.Response.Items != nil {
+		checkins = *untappdResp.Response.Items
+	} else {
+		return 0, true, fmt.Errorf("no checkins or items found in Untappd response")
+	}
+
+	var paginationSinceURL string
+	paginationSinceURL = untappdResp.Response.Pagination.SinceURL
 
 	if len(checkins) == 0 {
 		return 0, true, nil
@@ -137,7 +135,7 @@ func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcesso
 
 		defer resp.Body.Close()
 
-		newMinID, shouldBreak, err := c.handleResponse(ctx, resp, checkinProcessor, minID != 0)
+		newMinID, shouldBreak, err := c.handleResponse(ctx, resp, checkinProcessor)
 		if err != nil {
 			return err
 		}
