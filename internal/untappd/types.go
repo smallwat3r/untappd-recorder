@@ -8,6 +8,17 @@ type UntappdResponse struct {
 	Response Response `json:"response"`
 }
 
+// for some weird reason, the Untappd API struct is different when using
+// the `min_id` parameter. It seems to be omitting the checkins key, and
+// use items directly.
+type UntappdResponseMinID struct {
+	Response ResponseMinID `json:"response"`
+}
+type ResponseMinID struct {
+	Items      []Checkin  `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
+
 type Response struct {
 	Checkins   Checkins   `json:"checkins"`
 	Pagination Pagination `json:"pagination"`
