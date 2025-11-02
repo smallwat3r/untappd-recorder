@@ -74,28 +74,28 @@ func (v *Venue) Name() string {
 }
 
 func (v *Venue) City() string {
-	if v == nil {
+	if v == nil || v.VenueName == "Untappd at Home" {
 		return ""
 	}
 	return v.Location.City
 }
 
 func (v *Venue) State() string {
-	if v == nil {
+	if v == nil || v.VenueName == "Untappd at Home" {
 		return ""
 	}
 	return v.Location.State
 }
 
 func (v *Venue) Country() string {
-	if v == nil {
+	if v == nil || v.VenueName == "Untappd at Home" {
 		return ""
 	}
 	return v.Location.Country
 }
 
 func (v *Venue) LatLng() string {
-	if v == nil {
+	if v == nil || v.VenueName == "Untappd at Home" {
 		return ""
 	}
 	return fmt.Sprintf("%f,%f", v.Location.Lat, v.Location.Lng)
