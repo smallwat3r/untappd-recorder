@@ -89,18 +89,20 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 	}
 
 	metadata := &storage.CheckinMetadata{
-		ID:      strconv.Itoa(checkin.CheckinID),
-		Beer:    checkin.Beer.BeerName,
-		Brewery: checkin.Brewery.BreweryName,
-		Comment: checkin.CheckinComment,
-		Rating:  fmt.Sprintf("%.2f", checkin.RatingScore),
-		Venue:   checkin.Venue.Name(),
-		City:    checkin.Venue.City(),
-		Country: checkin.Venue.Country(),
-		Date:    checkin.CreatedAt,
-		LatLng:  checkin.Venue.LatLng(),
-		Style:   checkin.Beer.BeerStyle,
-		ABV:     fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
+		ID:             strconv.Itoa(checkin.CheckinID),
+		Beer:           checkin.Beer.BeerName,
+		Brewery:        checkin.Brewery.BreweryName,
+		BreweryCountry: checkin.Brewery.BreweryCountry,
+		Comment:        checkin.CheckinComment,
+		Rating:         fmt.Sprintf("%.2f", checkin.RatingScore),
+		Venue:          checkin.Venue.Name(),
+		City:           checkin.Venue.City(),
+		State:          checkin.Venue.State(),
+		Country:        checkin.Venue.Country(),
+		LatLng:         checkin.Venue.LatLng(),
+		Date:           checkin.CreatedAt,
+		Style:          checkin.Beer.BeerStyle,
+		ABV:            fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
 	return photo.DownloadAndSave(ctx, cfg, store, photoURL, metadata)

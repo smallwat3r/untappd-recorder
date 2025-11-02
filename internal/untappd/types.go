@@ -49,7 +49,8 @@ type Beer struct {
 }
 
 type Brewery struct {
-	BreweryName string `json:"brewery_name"`
+	BreweryName    string `json:"brewery_name"`
+	BreweryCountry string `json:"brewery_country"`
 }
 
 type Venue struct {
@@ -61,7 +62,8 @@ type Location struct {
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
 	City    string  `json:"venue_city"`
-	Country string  `json:"country_name"`
+	State   string  `json:"venue_state"`
+	Country string  `json:"venue_country"`
 }
 
 func (v *Venue) Name() string {
@@ -76,6 +78,13 @@ func (v *Venue) City() string {
 		return ""
 	}
 	return v.Location.City
+}
+
+func (v *Venue) State() string {
+	if v == nil {
+		return ""
+	}
+	return v.Location.State
 }
 
 func (v *Venue) Country() string {

@@ -211,18 +211,20 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 	}
 
 	metadata := &storage.CheckinMetadata{
-		ID:      record.CheckinID,
-		Beer:    record.BeerName,
-		Brewery: record.BreweryName,
-		Comment: record.Comment,
-		Rating:  record.RatingScore,
-		Venue:   record.VenueName,
-		City:    record.VenueCity,
-		Country: record.VenueCountry,
-		Date:    createdAt.Format(time.RFC1123Z),
-		LatLng:  formatLatLng(record),
-		Style:   record.BeerType,
-		ABV:     record.BeerABV,
+		ID:             record.CheckinID,
+		Beer:           record.BeerName,
+		Brewery:        record.BreweryName,
+		BreweryCountry: record.BreweryCountry,
+		Comment:        record.Comment,
+		Rating:         record.RatingScore,
+		Venue:          record.VenueName,
+		City:           record.VenueCity,
+		State:          record.VenueState,
+		Country:        record.VenueCountry,
+		Date:           createdAt.Format(time.RFC1123Z),
+		LatLng:         formatLatLng(record),
+		Style:          record.BeerType,
+		ABV:            record.BeerABV,
 	}
 
 	return photo.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
