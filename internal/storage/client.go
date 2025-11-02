@@ -3,19 +3,22 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
+	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
-// implements the Storage interface for S3-compatible services.
 type Client struct {
 	s3Client   S3Client
 	bucketName string
@@ -112,4 +115,78 @@ func (c *Client) ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Inpu
 
 func (c *Client) CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error) {
 	return c.s3Client.CopyObject(ctx, params, optFns...)
+}
+
+func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
+	headObj, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: &c.bucketName,
+		Key:    aws.String("latest"),
+	})
+	if err != nil {
+		var nfe *types.NotFound
+		if errors.As(err, &nfe) {
+			fmt.Println("latest key not found, starting from scratch")
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to head latest key: %w", err)
+	}
+
+	checkinID, err := strconv.Atoi(headObj.Metadata["id"])
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse checkin ID from metadata: %w", err)
+	}
+
+	fmt.Printf("Latest stored checkinID is: %d\n", checkinID)
+	return checkinID, nil
+}
+
+// sets the 'latest' key to alias the most recent check-in image.
+// the original image (named by its ID) is preserved 'latest' is simply overwritten.
+func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
+	checkinTime, err := time.Parse(time.RFC1123Z, checkin.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to parse checkin date %s: %w", checkin.CreatedAt, err)
+	}
+
+	year := checkinTime.Format("2006")
+	month := checkinTime.Format("01")
+	day := checkinTime.Format("02")
+
+	key := path.Join(year, month, day, fmt.Sprintf("%s.jpg", strconv.Itoa(checkin.CheckinID)))
+	latestKey := "latest.jpg"
+
+	sourceKey := path.Join(c.bucketName, key)
+	_, err = c.s3Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     &c.bucketName,
+		CopySource: aws.String(sourceKey),
+		Key:        &latestKey,
+	})
+	return err
+}
+
+func (c *Client) CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
+	checkinTime, err := time.Parse("2006-01-02 15:04:05", createdAt)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse checkin date %s: %w", createdAt, err)
+	}
+
+	year := checkinTime.Format("2006")
+	month := checkinTime.Format("01")
+	day := checkinTime.Format("02")
+
+	key := path.Join(year, month, day, fmt.Sprintf("%s.jpg", checkinID))
+
+	_, err = c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: &c.bucketName,
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var nfe *types.NotFound
+		if errors.As(err, &nfe) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to head object: %w", err)
+	}
+
+	return true, nil
 }

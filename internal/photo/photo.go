@@ -6,40 +6,59 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
 
+var httpClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
+
 func DownloadAndSave(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+	var photoBytes []byte
+	var err error
+
 	if photoURL == "" {
-		fmt.Printf("No photo found, using default: %s\n", cfg.MissingPhotoPath)
-		photoBytes, err := os.ReadFile(cfg.MissingPhotoPath)
+		photoBytes, err = usePlaceholderPhoto(cfg.PlaceholderPhotoPath)
 		if err != nil {
-			return fmt.Errorf("failed to read missing photo file %s: %w", cfg.MissingPhotoPath, err)
+			return fmt.Errorf("failed to get missing photo: %w", err)
 		}
-		return store.Upload(ctx, photoBytes, metadata)
+	} else {
+		photoBytes, err = downloadPhoto(ctx, photoURL)
+		if err != nil {
+			return fmt.Errorf("failed to download photo: %w", err)
+		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, photoURL, nil)
+	return store.Upload(ctx, photoBytes, metadata)
+}
+
+func usePlaceholderPhoto(path string) ([]byte, error) {
+	fmt.Printf("No photo found, using default: %s\n", path)
+	photoBytes, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to create request for photo %s: %w", photoURL, err)
+		return nil, fmt.Errorf("failed to read missing photo file %s: %w", path, err)
+	}
+	return photoBytes, nil
+}
+
+func downloadPhoto(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request for photo %s: %w", url, err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to download photo %s: %w", photoURL, err)
+		return nil, fmt.Errorf("failed to download photo %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download photo %s: status %s", photoURL, resp.Status)
+		return nil, fmt.Errorf("failed to download photo %s: status %s", url, resp.Status)
 	}
 
-	photoBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read photo bytes: %w", err)
-	}
-
-	return store.Upload(ctx, photoBytes, metadata)
+	return io.ReadAll(resp.Body)
 }

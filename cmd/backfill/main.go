@@ -3,20 +3,15 @@ package main
 import (
 	"context"
 	"encoding/csv"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
@@ -24,17 +19,6 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
-	}
-
-	store, err := storage.NewClient(ctx, cfg)
-	if err != nil {
-		log.Fatalf("Error creating storage client: %v", err)
-	}
-
 	csvPath := flag.String("csv", "", "path to a CSV file to backfill from")
 	flag.Parse()
 
@@ -42,11 +26,25 @@ func main() {
 		log.Fatal("-csv is required for backfill command")
 	}
 
-	fmt.Printf("Starting backfill from %s\n", *csvPath)
-	if err := runBackfill(ctx, *csvPath, store, cfg); err != nil {
+	if err := run(context.Background(), *csvPath); err != nil {
 		log.Fatalf("Backfill failed: %v", err)
 	}
 	fmt.Println("Backfill completed successfully.")
+}
+
+func run(ctx context.Context, csvPath string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("error loading configuration: %w", err)
+	}
+
+	store, err := storage.NewClient(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("error creating storage client: %w", err)
+	}
+
+	fmt.Printf("Starting backfill from %s\n", csvPath)
+	return runBackfill(ctx, csvPath, store, cfg)
 }
 
 // matches the structure of the Untappd CSV export.
@@ -105,6 +103,11 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 		return fmt.Errorf("could not read csv records: %w", err)
 	}
 
+	processCSVRecords(ctx, store, cfg, records, header)
+	return nil
+}
+
+func processCSVRecords(ctx context.Context, store *storage.Client, cfg *config.Config, records [][]string, header []string) {
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10)
 
@@ -132,7 +135,7 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 
 			log.Printf("Processing checkin %d", checkinID)
 
-			exists, err := checkinExists(ctx, store, cfg, csvRecord)
+			exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
 			if err != nil {
 				log.Printf("Error checking if checkin %d exists: %v", checkinID, err)
 				return
@@ -151,7 +154,6 @@ func runBackfill(ctx context.Context, csvPath string, store *storage.Client, cfg
 	}
 
 	wg.Wait()
-	return nil
 }
 
 func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
@@ -198,33 +200,6 @@ func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
 		TotalToasts:               recordMap["total_toasts"],
 		TotalComments:             recordMap["total_comments"],
 	}, nil
-}
-
-func checkinExists(ctx context.Context, store *storage.Client, cfg *config.Config, record *CSVRecord) (bool, error) {
-	checkinTime, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse checkin date %s: %w", record.CreatedAt, err)
-	}
-
-	year := checkinTime.Format("2006")
-	month := checkinTime.Format("01")
-	day := checkinTime.Format("02")
-
-	key := path.Join(year, month, day, fmt.Sprintf("%s.jpg", record.CheckinID))
-
-	_, err = store.HeadObject(ctx, &s3.HeadObjectInput{
-		Bucket: &cfg.BucketName,
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		var nfe *types.NotFound
-		if errors.As(err, &nfe) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to head object: %w", err)
-	}
-
-	return true, nil
 }
 
 func formatLatLng(record *CSVRecord) string {
