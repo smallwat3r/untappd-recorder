@@ -100,7 +100,12 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		Rating:       fmt.Sprintf("%.2f", checkin.RatingScore),
 		Venue:        checkin.Venue.VenueName,
 		Date:         checkin.CreatedAt,
-		LatLng:       fmt.Sprintf("%f,%f", checkin.Venue.Location.Lat, checkin.Venue.Location.Lng),
+		LatLng: func() string {
+			if checkin.Venue.VenueName == "" {
+				return ""
+			}
+			return storage.FormatLatLng(checkin.Venue.Location.Lat, checkin.Venue.Location.Lng)
+		}(),
 		Style:        checkin.Beer.BeerStyle,
 		ABV:          fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 		ServingStyle: checkin.ServingStyle,

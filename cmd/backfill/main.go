@@ -221,6 +221,24 @@ func checkinExists(ctx context.Context, store *storage.Client, cfg *config.Confi
 	return true, nil
 }
 
+func formatLatLng(record *CSVRecord) string {
+	if record.VenueName == "" {
+		return ""
+	}
+
+	lat, err := strconv.ParseFloat(record.VenueLat, 64)
+	if err != nil {
+		return ""
+	}
+
+	lng, err := strconv.ParseFloat(record.VenueLng, 64)
+	if err != nil {
+		return ""
+	}
+
+	return storage.FormatLatLng(lat, lng)
+}
+
 func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
@@ -235,7 +253,7 @@ func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Confi
 		Rating:       record.RatingScore,
 		Venue:        record.VenueName,
 		Date:         createdAt.Format(time.RFC1123Z),
-		LatLng:       fmt.Sprintf("%s,%s", record.VenueLat, record.VenueLng),
+		LatLng:       formatLatLng(record),
 		Style:        record.BeerType,
 		ABV:          record.BeerABV,
 		ServingStyle: record.ServingType,

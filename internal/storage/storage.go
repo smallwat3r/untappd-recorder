@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -48,4 +49,11 @@ func (m *CheckinMetadata) ToMap() map[string]string {
 		"abv":           m.ABV,
 		"serving-style": m.ServingStyle,
 	}
+}
+
+func FormatLatLng(lat, lng float64) string {
+	if lat == 0 || lng == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%f,%f", lat, lng)
 }
