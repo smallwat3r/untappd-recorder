@@ -93,13 +93,13 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 	}
 
 	metadata := &storage.CheckinMetadata{
-		ID:           strconv.Itoa(checkin.CheckinID),
-		Beer:         checkin.Beer.BeerName,
-		Brewery:      checkin.Brewery.BreweryName,
-		Comment:      checkin.CheckinComment,
-		Rating:       fmt.Sprintf("%.2f", checkin.RatingScore),
-		Venue:        checkin.Venue.VenueName,
-		Date:         checkin.CreatedAt,
+		ID:      strconv.Itoa(checkin.CheckinID),
+		Beer:    checkin.Beer.BeerName,
+		Brewery: checkin.Brewery.BreweryName,
+		Comment: checkin.CheckinComment,
+		Rating:  fmt.Sprintf("%.2f", checkin.RatingScore),
+		Venue:   checkin.Venue.VenueName,
+		Date:    checkin.CreatedAt,
 		LatLng: func() string {
 			if checkin.Venue.VenueName == "" {
 				return ""
