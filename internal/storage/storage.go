@@ -4,12 +4,15 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type Storage interface {
 	Upload(ctx context.Context, file []byte, metadata *CheckinMetadata) error
 	Download(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error)
+	GetLatestCheckinID(ctx context.Context) (int, error)
+	UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error
 }
 
 type S3Client interface {

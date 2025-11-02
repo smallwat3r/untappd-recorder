@@ -14,28 +14,36 @@ import (
 )
 
 func main() {
-	if err := run(context.Background()); err != nil {
+	if err := run(context.Background(), nil, nil); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Record completed successfully.")
 }
 
-func run(ctx context.Context) error {
+func run(ctx context.Context, store storage.Storage, untappdClient untappd.UntappdClient) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("error loading configuration: %w", err)
 	}
 
-	store, err := storage.NewClient(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("error creating storage client: %w", err)
+	if store == nil {
+		s, err := storage.NewClient(ctx, cfg)
+		if err != nil {
+			return fmt.Errorf("error creating storage client: %w", err)
+		}
+		store = s
 	}
 
-	return runRecorder(ctx, store, cfg)
+	if untappdClient == nil {
+		untappdClient = untappd.NewClient(cfg)
+	}
+
+	downloader := photo.NewDownloader()
+
+	return runRecorder(ctx, store, cfg, untappdClient, downloader)
 }
 
-func runRecorder(ctx context.Context, store *storage.Client, cfg *config.Config) error {
-	untappdClient := untappd.NewClient(cfg)
+func runRecorder(ctx context.Context, store storage.Storage, cfg *config.Config, untappdClient untappd.UntappdClient, downloader photo.Downloader) error {
 	latestCheckinIDKey, err := store.GetLatestCheckinID(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting latest checkin ID: %w", err)
@@ -44,7 +52,7 @@ func runRecorder(ctx context.Context, store *storage.Client, cfg *config.Config)
 	var once sync.Once
 	return untappdClient.FetchCheckins(ctx, latestCheckinIDKey, func(ctx context.Context, checkins []untappd.Checkin) error {
 		fmt.Printf("Processing %d checkins\n", len(checkins))
-		processCheckins(ctx, store, cfg, checkins)
+		processCheckins(ctx, store, cfg, checkins, downloader)
 
 		// we set the first checkin to be the latest, so we remember from where
 		// to start next time the script runs.
@@ -60,7 +68,7 @@ func runRecorder(ctx context.Context, store *storage.Client, cfg *config.Config)
 	})
 }
 
-func processCheckins(ctx context.Context, store *storage.Client, cfg *config.Config, checkins []untappd.Checkin) {
+func processCheckins(ctx context.Context, store storage.Storage, cfg *config.Config, checkins []untappd.Checkin, downloader photo.Downloader) {
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10)
 
@@ -73,7 +81,7 @@ func processCheckins(ctx context.Context, store *storage.Client, cfg *config.Con
 			defer func() { <-semaphore }()
 
 			log.Printf("Processing checkin %d", c.CheckinID)
-			if err := saveCheckin(ctx, store, cfg, c); err != nil {
+			if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
 				log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
 			}
 		}(checkin)
@@ -82,7 +90,7 @@ func processCheckins(ctx context.Context, store *storage.Client, cfg *config.Con
 	wg.Wait()
 }
 
-func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin) error {
+func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config, checkin untappd.Checkin, downloader photo.Downloader) error {
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
@@ -105,6 +113,5 @@ func saveCheckin(ctx context.Context, store storage.Storage, cfg *config.Config,
 		ABV:            fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
-	downloader := photo.NewDownloader()
 	return downloader.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
 }

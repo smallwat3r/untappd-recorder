@@ -12,20 +12,8 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 )
 
-func parseMinID(sinceURL string) (int, error) {
-	u, err := url.Parse(sinceURL)
-	if err != nil {
-		return 0, err
-	}
-	minIDStr := u.Query().Get("min_id")
-	if minIDStr == "" {
-		return 0, fmt.Errorf("min_id not found in since_url")
-	}
-	minID, err := strconv.Atoi(minIDStr)
-	if err != nil {
-		return 0, err
-	}
-	return minID, nil
+type UntappdClient interface {
+	FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []Checkin) error) error
 }
 
 type Client struct {
@@ -33,42 +21,13 @@ type Client struct {
 	client *http.Client
 }
 
-func NewClient(cfg *config.Config) *Client {
+func NewClient(cfg *config.Config) UntappdClient {
 	return &Client{
 		cfg: cfg,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
-}
-
-func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []Checkin) error) error {
-	endpoint := "https://api.untappd.com/v4/user/checkins"
-	minID := sinceID
-
-	for {
-		req, err := c.buildRequest(ctx, endpoint, minID)
-		if err != nil {
-			return fmt.Errorf("failed to build request: %w", err)
-		}
-
-		resp, err := c.client.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		newMinID, shouldBreak, err := c.handleResponse(ctx, resp, checkinProcessor)
-		if err != nil {
-			return fmt.Errorf("failed to handle response: %w", err)
-		}
-
-		if shouldBreak {
-			break
-		}
-		minID = newMinID
-	}
-	return nil
 }
 
 func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checkinProcessor func(context.Context, []Checkin) error) (int, bool, error) {
@@ -106,6 +65,25 @@ func (c *Client) handleResponse(ctx context.Context, resp *http.Response, checki
 	return nextMinID, false, nil
 }
 
+func parseMinID(sinceURL string) (int, error) {
+	u, err := url.Parse(sinceURL)
+	if err != nil {
+		return 0, err
+	}
+
+	minIDStr := u.Query().Get("min_id")
+	if minIDStr == "" {
+		return 0, fmt.Errorf("min_id not found in since_url")
+	}
+
+	minID, err := strconv.Atoi(minIDStr)
+	if err != nil {
+		return 0, err
+	}
+
+	return minID, nil
+}
+
 func (c *Client) buildRequest(ctx context.Context, endpoint string, minID int) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -121,7 +99,38 @@ func (c *Client) buildRequest(ctx context.Context, endpoint string, minID int) (
 		// want to fetch the first checkin and stop.
 		q.Add("limit", "1")
 	}
-	req.URL.RawQuery = q.Encode()
 
+	req.URL.RawQuery = q.Encode()
 	return req, nil
+}
+
+func (c *Client) FetchCheckins(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []Checkin) error) error {
+	endpoint := "https://api.untappd.com/v4/user/checkins"
+	minID := sinceID
+
+	for {
+		req, err := c.buildRequest(ctx, endpoint, minID)
+		if err != nil {
+			return err
+		}
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		newMinID, shouldBreak, err := c.handleResponse(ctx, resp, checkinProcessor)
+		if err != nil {
+			return err
+		}
+		if shouldBreak {
+			break
+		}
+
+		minID = newMinID
+	}
+
+	return nil
 }

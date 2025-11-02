@@ -9,12 +9,15 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type mockStorage struct {
-	CheckinExistsFunc func(ctx context.Context, checkinID, createdAt string) (bool, error)
-	UploadFunc        func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
-	DownloadFunc      func(ctx context.Context, fileName string) ([]byte, error)
+	CheckinExistsFunc       func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	UploadFunc              func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	DownloadFunc            func(ctx context.Context, fileName string) ([]byte, error)
+	GetLatestCheckinIDFunc  func(ctx context.Context) (int, error)
+	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
 }
 
 func (m *mockStorage) CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
@@ -22,6 +25,20 @@ func (m *mockStorage) CheckinExists(ctx context.Context, checkinID, createdAt st
 		return m.CheckinExistsFunc(ctx, checkinID, createdAt)
 	}
 	return false, nil
+}
+
+func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (int, error) {
+	if m.GetLatestCheckinIDFunc != nil {
+		return m.GetLatestCheckinIDFunc(ctx)
+	}
+	return 0, nil
+}
+
+func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
+	if m.UpdateLatestCheckinIDFunc != nil {
+		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
+	}
+	return nil
 }
 
 func (m *mockStorage) Upload(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error {
