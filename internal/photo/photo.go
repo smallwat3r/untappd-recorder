@@ -48,10 +48,7 @@ func (d *DefaultDownloader) DownloadAndSave(ctx context.Context, cfg *config.Con
 func usePlaceholderPhoto(path string) ([]byte, error) {
 	fmt.Printf("No photo found, using default: %s\n", path)
 	photoBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read missing photo file %s: %w", path, err)
-	}
-	return photoBytes, nil
+	return photoBytes, err
 }
 
 func (d *DefaultDownloader) downloadPhoto(ctx context.Context, url string) ([]byte, error) {
