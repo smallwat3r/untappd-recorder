@@ -24,7 +24,10 @@ func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (int, error) {
 	return 0, nil
 }
 
-func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
+func (m *mockStorage) UpdateLatestCheckinID(
+	ctx context.Context,
+	checkin untappd.Checkin,
+) error {
 	if m.UpdateLatestCheckinIDFunc != nil {
 		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
 	}
@@ -60,7 +63,11 @@ func (m *mockStorage) CheckinExists(
 }
 
 type mockUntappdClient struct {
-	FetchCheckinsFunc func(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []untappd.Checkin) error) error
+	FetchCheckinsFunc func(
+		ctx context.Context,
+		sinceID int,
+		checkinProcessor func(context.Context, []untappd.Checkin) error,
+	) error
 }
 
 func (m *mockUntappdClient) FetchCheckins(
@@ -75,7 +82,13 @@ func (m *mockUntappdClient) FetchCheckins(
 }
 
 type mockDownloader struct {
-	DownloadAndSaveFunc func(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error
+	DownloadAndSaveFunc func(
+		ctx context.Context,
+		cfg *config.Config,
+		store storage.Storage,
+		photoURL string,
+		metadata *storage.CheckinMetadata,
+	) error
 }
 
 func (m *mockDownloader) DownloadAndSave(
@@ -100,29 +113,48 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	t.Setenv("NUM_WORKERS", "1")
 
 	updateLatestCheckinIDCalled := false
+
 	mockStore := &mockStorage{
-		UpdateLatestCheckinIDFunc: func(ctx context.Context, checkin untappd.Checkin) error {
+		UpdateLatestCheckinIDFunc: func(
+			ctx context.Context,
+			checkin untappd.Checkin,
+		) error {
 			updateLatestCheckinIDCalled = true
+
 			if checkin.CheckinID != 54321 {
-				t.Errorf("Expected checkinID to be 54321, got %d", checkin.CheckinID)
+				t.Errorf("expected checkinID to be 54321, got %d", checkin.CheckinID)
 			}
+
 			return nil
 		},
 	}
 
 	downloadAndSaveCalled := false
+
 	mockDownloader := &mockDownloader{
-		DownloadAndSaveFunc: func(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+		DownloadAndSaveFunc: func(
+			ctx context.Context,
+			cfg *config.Config,
+			store storage.Storage,
+			photoURL string,
+			metadata *storage.CheckinMetadata,
+		) error {
 			downloadAndSaveCalled = true
+
 			if metadata.ID != "54321" {
-				t.Errorf("Expected metadata ID to be 54321, got %s", metadata.ID)
+				t.Errorf("expected metadata ID to be 54321, got %s", metadata.ID)
 			}
+
 			return nil
 		},
 	}
 
 	mockUntappd := &mockUntappdClient{
-		FetchCheckinsFunc: func(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []untappd.Checkin) error) error {
+		FetchCheckinsFunc: func(
+			ctx context.Context,
+			sinceID int,
+			checkinProcessor func(context.Context, []untappd.Checkin) error,
+		) error {
 			checkins := []untappd.Checkin{
 				{CheckinID: 54321},
 			}
@@ -132,19 +164,25 @@ func TestRun_ProcessCheckins(t *testing.T) {
 
 	cfg, err := config.Load()
 	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("failed to load config: %v", err)
 	}
 
-	if err := runRecorder(context.Background(), mockStore, cfg, mockUntappd, mockDownloader); err != nil {
+	if err := runRecorder(
+		context.Background(),
+		mockStore,
+		cfg,
+		mockUntappd,
+		mockDownloader,
+	); err != nil {
 		t.Errorf("runRecorder() error = %v, wantErr %v", err, false)
 	}
 
 	if !updateLatestCheckinIDCalled {
-		t.Error("Expected UpdateLatestCheckinID to be called, but it was not")
+		t.Error("expected UpdateLatestCheckinID to be called, but it was not")
 	}
 
 	if !downloadAndSaveCalled {
-		t.Error("Expected DownloadAndSave to be called, but it was not")
+		t.Error("expected DownloadAndSave to be called, but it was not")
 	}
 }
 
@@ -157,6 +195,7 @@ func TestRun(t *testing.T) {
 	t.Setenv("NUM_WORKERS", "1")
 
 	getLatestCheckinIDCalled := false
+
 	mockStore := &mockStorage{
 		GetLatestCheckinIDFunc: func(ctx context.Context) (int, error) {
 			getLatestCheckinIDCalled = true
@@ -165,25 +204,36 @@ func TestRun(t *testing.T) {
 	}
 
 	fetchCheckinsCalled := false
+
 	mockUntappd := &mockUntappdClient{
-		FetchCheckinsFunc: func(ctx context.Context, sinceID int, checkinProcessor func(context.Context, []untappd.Checkin) error) error {
+		FetchCheckinsFunc: func(
+			ctx context.Context,
+			sinceID int,
+			checkinProcessor func(context.Context, []untappd.Checkin) error,
+		) error {
 			fetchCheckinsCalled = true
+
 			if sinceID != 123 {
-				t.Errorf("Expected sinceID to be 123, got %d", sinceID)
+				t.Errorf("expected sinceID to be 123, got %d", sinceID)
 			}
+
 			return nil
 		},
 	}
 
-	if err := run(context.Background(), mockStore, mockUntappd); err != nil {
+	if err := run(
+		context.Background(),
+		mockStore,
+		mockUntappd,
+	); err != nil {
 		t.Errorf("run() error = %v, wantErr %v", err, false)
 	}
 
 	if !getLatestCheckinIDCalled {
-		t.Error("Expected GetLatestCheckinID to be called, but it was not")
+		t.Error("expected GetLatestCheckinID to be called, but it was not")
 	}
 
 	if !fetchCheckinsCalled {
-		t.Error("Expected FetchCheckins to be called, but it was not")
+		t.Error("expected FetchCheckins to be called, but it was not")
 	}
 }

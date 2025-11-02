@@ -17,7 +17,7 @@ func main() {
 	if err := run(context.Background(), nil, nil); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Record completed successfully.")
+	fmt.Println("record completed successfully.")
 }
 
 func run(ctx context.Context, store storage.Storage, untappdClient untappd.UntappdClient) error {
@@ -50,32 +50,39 @@ func runRecorder(
 	untappdClient untappd.UntappdClient,
 	downloader photo.Downloader,
 ) error {
-	latestCheckinIDKey, err := store.GetLatestCheckinID(ctx)
+	latestCheckinID, err := store.GetLatestCheckinID(ctx)
 	if err != nil {
-		return fmt.Errorf("error getting latest checkin ID: %w", err)
+		return fmt.Errorf("get latest checkin ID: %w", err)
 	}
 
+	proc := newCheckinProcessor(store, cfg, downloader)
+	return untappdClient.FetchCheckins(ctx, latestCheckinID, proc)
+}
+
+func newCheckinProcessor(
+	store storage.Storage,
+	cfg *config.Config,
+	downloader photo.Downloader,
+) func(context.Context, []untappd.Checkin) error {
 	var once sync.Once
-	return untappdClient.FetchCheckins(
-		ctx,
-		latestCheckinIDKey,
-		func(ctx context.Context, checkins []untappd.Checkin) error {
-			fmt.Printf("Processing %d checkins\n", len(checkins))
-			processCheckins(ctx, store, cfg, checkins, downloader)
 
-			// we set the first checkin to be the latest, so we remember from where
-			// to start next time the script runs.
-			if len(checkins) > 0 {
-				once.Do(func() {
-					if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
-						log.Printf("Failed to update latest checkin ID: %v", err)
-					}
-				})
-			}
-
+	return func(ctx context.Context, checkins []untappd.Checkin) error {
+		if len(checkins) == 0 {
+			fmt.Printf("no checkins to process")
 			return nil
-		},
-	)
+		}
+
+		fmt.Printf("processing %d checkins\n", len(checkins))
+		processCheckins(ctx, store, cfg, checkins, downloader)
+
+		// Set the first (newest) checkin once so next run continues from there.
+		once.Do(func() {
+			if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
+				log.Printf("failed to update latest checkin ID: %v", err)
+			}
+		})
+		return nil
+	}
 }
 
 func processCheckins(
@@ -96,9 +103,9 @@ func processCheckins(
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			log.Printf("Processing checkin %d", c.CheckinID)
+			log.Printf("processing checkin %d", c.CheckinID)
 			if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
-				log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
+				log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
 			}
 		}(checkin)
 	}

@@ -23,7 +23,7 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header: http.Header{
-					"X-Ratelimit-Remaining": []string{"0"},
+					"X-RateLimit-Remaining": []string{"0"},
 				},
 				Body: io.NopCloser(strings.NewReader(`{"response":{"checkins":{"items":[]}}}`)),
 			}, nil
@@ -33,17 +33,21 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 	cfg := &config.Config{UntappdAccessToken: "test-token"}
 	client := newTestClient(cfg, mockClient)
 
+	processorCalled := false
 	err := client.FetchCheckins(
 		context.Background(),
 		0,
 		func(ctx context.Context, checkins []Checkin) error {
-			t.Error("checkinProcessor should not be called when rate limit is reached")
+			processorCalled = true
 			return nil
 		},
 	)
 
 	if err != nil {
-		t.Errorf("FetchCheckins returned an error: %v", err)
+		t.Fatalf("FetchCheckins returned error: %v", err)
+	}
+	if processorCalled {
+		t.Error("checkinProcessor should not be called when rate limit is reached")
 	}
 }
 

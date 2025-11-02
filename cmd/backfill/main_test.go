@@ -63,7 +63,13 @@ func (m *mockStorage) Download(ctx context.Context, fileName string) ([]byte, er
 }
 
 type mockDownloader struct {
-	DownloadAndSaveFunc func(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error
+	DownloadAndSaveFunc func(
+		ctx context.Context,
+		cfg *config.Config,
+		store storage.Storage,
+		photoURL string,
+		metadata *storage.CheckinMetadata,
+	) error
 }
 
 func (m *mockDownloader) DownloadAndSave(
@@ -95,29 +101,45 @@ func TestRun(t *testing.T) {
 `
 	csvPath := filepath.Join(tempDir, "test.csv")
 	if err := os.WriteFile(csvPath, []byte(csvContent), 0644); err != nil {
-		t.Fatalf("Failed to create test CSV file: %v", err)
+		t.Fatalf("failed to create test CSV file: %v", err)
 	}
+
 	checkinExistsCalled := false
+
 	mockStore := &mockStorage{
-		CheckinExistsFunc: func(ctx context.Context, checkinID, createdAt string) (bool, error) {
+		CheckinExistsFunc: func(
+			ctx context.Context,
+			checkinID, createdAt string,
+		) (bool, error) {
 			checkinExistsCalled = true
+
 			if checkinID != "12345" {
-				t.Errorf("Expected checkinID to be 12345, got %s", checkinID)
+				t.Errorf("expected checkinID to be 12345, got %s", checkinID)
 			}
 			if createdAt != "2023-01-01 12:00:00" {
-				t.Errorf("Expected createdAt to be 2023-01-01 12:00:00, got %s", createdAt)
+				t.Errorf("expected createdAt to be 2023-01-01 12:00:00, got %s", createdAt)
 			}
+
 			return false, nil
 		},
 	}
 
 	downloadAndSaveCalled := false
+
 	var downloader photo.Downloader = &mockDownloader{
-		DownloadAndSaveFunc: func(ctx context.Context, cfg *config.Config, store storage.Storage, photoURL string, metadata *storage.CheckinMetadata) error {
+		DownloadAndSaveFunc: func(
+			ctx context.Context,
+			cfg *config.Config,
+			store storage.Storage,
+			photoURL string,
+			metadata *storage.CheckinMetadata,
+		) error {
 			downloadAndSaveCalled = true
+
 			if photoURL != "http://example.com/photo.jpg" {
-				t.Errorf("Expected photoURL to be http://example.com/photo.jpg, got %s", photoURL)
+				t.Errorf("expected photoURL to be http://example.com/photo.jpg, got %s", photoURL)
 			}
+
 			return nil
 		},
 	}

@@ -57,7 +57,7 @@ func (c *Client) handleResponse(
 	}
 
 	if resp.Header.Get("X-Ratelimit-Remaining") == "0" {
-		fmt.Println("Untappd API rate limit reached. Stopping for now.")
+		fmt.Println("untappd API rate limit reached. Stopping for now.")
 		return 0, true, nil
 	}
 
@@ -86,29 +86,33 @@ func (c *Client) handleResponse(
 
 	nextMinID, err := parseMinID(sinceURL)
 	if err != nil {
-		return 0, true, fmt.Errorf("failed to parse min_id from since_url %q: %w", sinceURL, err)
+		return 0, true, fmt.Errorf(
+			"failed to parse min_id from since_url %q: %w",
+			sinceURL,
+			err,
+		)
 	}
 
 	return nextMinID, false, nil
 }
 
-func parseMinID(sinceURL string) (int, error) {
-	u, err := url.Parse(sinceURL)
+func parseMinID(rawURL string) (int, error) {
+	u, err := url.Parse(rawURL)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to parse URL %q: %w", rawURL, err)
 	}
 
 	minIDStr := u.Query().Get("min_id")
 	if minIDStr == "" {
-		return 0, fmt.Errorf("min_id not found in since_url")
+		return 0, fmt.Errorf("min_id not found in %q", rawURL)
 	}
 
-	minID, err := strconv.Atoi(minIDStr)
+	v, err := strconv.ParseInt(minIDStr, 10, 0)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to parse min_id %q: %w", minIDStr, err)
 	}
 
-	return minID, nil
+	return int(v), nil
 }
 
 func (c *Client) buildRequest(
