@@ -10,7 +10,7 @@ The project consists of two main parts:
 
 ### Prerequisites
 
-- Go installed on your machine.
+- Go 1.24
 - An Untappd account and an API access token.
 - A cloud storage bucket (AWS S3, Cloudflare R2, or compatible).
 
