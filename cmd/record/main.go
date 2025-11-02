@@ -74,9 +74,9 @@ func processCheckins(ctx context.Context, store *storage.Client, cfg *config.Con
 			defer func() { <-semaphore }()
 
 			log.Printf("Processing checkin %d", c.CheckinID)
-			// if err := saveCheckin(ctx, store, cfg, c); err != nil {
-			// 	log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
-			// }
+			if err := saveCheckin(ctx, store, cfg, c); err != nil {
+				log.Printf("Failed to save checkin %d: %v", c.CheckinID, err)
+			}
 		}(checkin)
 	}
 
