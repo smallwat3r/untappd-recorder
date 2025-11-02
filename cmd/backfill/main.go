@@ -20,6 +20,7 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/util"
 )
 
 func main() {
@@ -241,7 +242,7 @@ func formatLatLng(record *CSVRecord) string {
 		return ""
 	}
 
-	return storage.FormatLatLng(lat, lng)
+	return util.FormatLatLng(lat, lng)
 }
 
 func saveCSVRecord(ctx context.Context, store storage.Storage, cfg *config.Config, record *CSVRecord) error {
