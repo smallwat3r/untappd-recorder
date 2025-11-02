@@ -50,7 +50,7 @@ type Beer struct {
 
 type Brewery struct {
 	BreweryName    string `json:"brewery_name"`
-	BreweryCountry string `json:"brewery_country"`
+	BreweryCountry string `json:"country_name"`
 }
 
 type Venue struct {
