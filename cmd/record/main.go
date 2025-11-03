@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"sync"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
+	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
@@ -98,31 +97,15 @@ func processCheckins(
 	checkins []untappd.Checkin,
 	downloader photo.Downloader,
 ) {
-	g, ctx := errgroup.WithContext(ctx)
-	workers := cfg.NumWorkers
-	if workers <= 0 {
-		workers = 10
-	}
-	g.SetLimit(workers)
-
-	for _, c := range checkins {
-		c := c // capture
-		g.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			log.Printf("Processing checkin %d", c.CheckinID)
-			if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
-				log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
-			}
-			return nil
-		})
-	}
-
-	_ = g.Wait()
+	processor.Process(ctx, checkins, cfg.NumWorkers, func(
+		ctx context.Context,
+		c untappd.Checkin,
+	) {
+		log.Printf("Processing checkin %d", c.CheckinID)
+		if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
+			log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
+		}
+	})
 }
 
 func saveCheckin(

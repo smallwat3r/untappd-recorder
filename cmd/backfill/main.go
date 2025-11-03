@@ -11,10 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
+	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
@@ -133,53 +132,36 @@ func processCSVRecords(
 	header []string,
 	downloader photo.Downloader,
 ) {
-	g, ctx := errgroup.WithContext(ctx)
-	if cfg.NumWorkers > 0 {
-		g.SetLimit(cfg.NumWorkers)
-	}
+	processor.Process(ctx, records, cfg.NumWorkers, func(ctx context.Context, rec []string) {
+		csvRecord, err := recordToCSVRecord(rec, header)
+		if err != nil {
+			log.Printf("error mapping record -> CSVRecord: %v", err)
+			return
+		}
 
-	for _, rec := range records {
-		rec := rec // capture
-		g.Go(func() error {
-			csvRecord, err := recordToCSVRecord(rec, header)
-			if err != nil {
-				log.Printf("error mapping record -> CSVRecord: %v", err)
-				return nil
-			}
+		checkinID, err := strconv.Atoi(csvRecord.CheckinID)
+		if err != nil {
+			log.Printf("invalid checkin ID %q: %v", csvRecord.CheckinID, err)
+			return
+		}
 
-			checkinID, err := strconv.Atoi(csvRecord.CheckinID)
-			if err != nil {
-				log.Printf("invalid checkin ID %q: %v", csvRecord.CheckinID, err)
-				return nil
-			}
+		log.Printf("Processing checkin %d", checkinID)
 
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
+		exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
+		if err != nil {
+			log.Printf("failed checking exists(%d): %v", checkinID, err)
+			return
+		}
+		if exists {
+			log.Printf("checkin %d exists, skipping", checkinID)
+			return
+		}
 
-			log.Printf("Processing checkin %d", checkinID)
-
-			exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
-			if err != nil {
-				log.Printf("failed checking exists(%d): %v", checkinID, err)
-				return nil
-			}
-			if exists {
-				log.Printf("checkin %d exists, skipping", checkinID)
-				return nil
-			}
-
-			log.Printf("Backfilling checkin %d", checkinID)
-			if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
-				log.Printf("failed to save(%d): %v", checkinID, err)
-			}
-			return nil
-		})
-	}
-
-	_ = g.Wait()
+		log.Printf("Backfilling checkin %d", checkinID)
+		if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
+			log.Printf("failed to save(%d): %v", checkinID, err)
+		}
+	})
 }
 
 func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
