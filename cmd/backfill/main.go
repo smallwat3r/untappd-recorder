@@ -30,7 +30,7 @@ func main() {
 	if err := run(context.Background(), *csvPath, nil, nil); err != nil {
 		log.Fatalf("backfill failed: %v", err)
 	}
-	log.Println("backfill completed successfully.")
+	log.Println("Backfill completed successfully.")
 }
 
 func run(
@@ -159,7 +159,7 @@ func processCSVRecords(
 			default:
 			}
 
-			log.Printf("processing checkin %d", checkinID)
+			log.Printf("Processing checkin %d", checkinID)
 
 			exists, err := store.CheckinExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
 			if err != nil {
@@ -171,9 +171,9 @@ func processCSVRecords(
 				return nil
 			}
 
-			log.Printf("backfilling checkin %d", checkinID)
+			log.Printf("Backfilling checkin %d", checkinID)
 			if err := saveCSVRecord(ctx, store, cfg, csvRecord, downloader); err != nil {
-				log.Printf("failed save(%d): %v", checkinID, err)
+				log.Printf("failed to save(%d): %v", checkinID, err)
 			}
 			return nil
 		})

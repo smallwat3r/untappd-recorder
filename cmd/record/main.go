@@ -19,7 +19,7 @@ func main() {
 	if err := run(context.Background(), nil, nil); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("record completed successfully.")
+	log.Println("Record completed successfully.")
 }
 
 func run(ctx context.Context, store storage.Storage, untappdClient untappd.UntappdClient) error {
@@ -74,11 +74,11 @@ func newCheckinProcessor(
 		}
 
 		if len(checkins) == 0 {
-			log.Printf("no checkins to process\n")
+			log.Printf("No checkins to process\n")
 			return nil
 		}
 
-		log.Printf("processing %d checkins\n", len(checkins))
+		log.Printf("Processing %d checkins\n", len(checkins))
 		processCheckins(ctx, store, cfg, checkins, downloader)
 
 		// first element should be newest, update once per FetchCheckins cycle
@@ -114,7 +114,7 @@ func processCheckins(
 			default:
 			}
 
-			log.Printf("processing checkin %d", c.CheckinID)
+			log.Printf("Processing checkin %d", c.CheckinID)
 			if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
 				log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
 			}
