@@ -6,15 +6,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-
 RUN CGO_ENABLED=0 go build -o /out/record ./cmd/record
 
-FROM gcr.io/distroless/static
+FROM gcr.io/distroless/static:nonroot
 
 COPY --from=builder --chown=nonroot:nonroot /out/record /usr/local/bin/record
-
 COPY --chown=nonroot:nonroot img/ /img/
-
-USER nonroot
 
 CMD ["/usr/local/bin/record"]
