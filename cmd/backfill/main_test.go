@@ -16,7 +16,7 @@ type mockStorage struct {
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	UploadFunc                func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
-	GetLatestCheckinIDFunc    func(ctx context.Context) (int, error)
+	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
 }
 
@@ -30,7 +30,7 @@ func (m *mockStorage) CheckinExists(
 	return false, nil
 }
 
-func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (int, error) {
+func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	if m.GetLatestCheckinIDFunc != nil {
 		return m.GetLatestCheckinIDFunc(ctx)
 	}

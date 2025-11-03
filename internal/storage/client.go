@@ -155,8 +155,9 @@ func (c *Client) CopyObject(
 	return c.s3Client.CopyObject(ctx, params, optFns...)
 }
 
-func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
+func (c *Client) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	const latestKey = "latest.jpg"
+	const metaKeyID = "id"
 
 	h, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(c.bucketName),
@@ -165,27 +166,29 @@ func (c *Client) GetLatestCheckinID(ctx context.Context) (int, error) {
 	if err != nil {
 		var nfe *types.NotFound
 		if errors.As(err, &nfe) {
-			// latest not present: start from scratch
-			log.Println("latest key not found, starting from scratch")
+			log.Println("Latest key not found, starting from scratch")
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to head %q: %w", latestKey, err)
 	}
 
-	idStr, ok := h.Metadata["id"]
-	if !ok || strings.TrimSpace(idStr) == "" {
-		return 0, fmt.Errorf("metadata %q missing on %q", "id", latestKey)
+	raw, ok := h.Metadata[metaKeyID]
+	if !ok {
+		return 0, fmt.Errorf(`missing "%s" metadata on %q`, metaKeyID, latestKey)
 	}
 
-	idStr = strings.TrimSpace(idStr)
-	id64, err := strconv.ParseInt(idStr, 10, 0)
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, fmt.Errorf(`empty "%s" metadata on %q`, metaKeyID, latestKey)
+	}
+
+	id, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse %q from metadata %q: %w", idStr, "id", err)
+		return 0, fmt.Errorf(`invalid "%s" metadata value %q on %q: %w`, metaKeyID, s, latestKey, err)
 	}
 
-	checkinID := int(id64)
-	log.Printf("latest stored checkinID is: %d\n", checkinID)
-	return checkinID, nil
+	log.Printf("Latest stored checkinID is: %d\n", id)
+	return id, nil
 }
 
 func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
@@ -206,7 +209,7 @@ func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Chec
 		CopySource:        aws.String(copySource),
 		MetadataDirective: types.MetadataDirectiveReplace,
 		Metadata: map[string]string{
-			"id":         fmt.Sprintf("%d", checkin.CheckinID),
+			"id":         strconv.FormatUint(checkin.CheckinID, 10),
 			"created_at": t.Format(time.RFC3339),
 		},
 		ContentType: aws.String("image/jpeg"),

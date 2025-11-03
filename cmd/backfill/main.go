@@ -139,7 +139,7 @@ func processCSVRecords(
 			return
 		}
 
-		checkinID, err := strconv.Atoi(csvRecord.CheckinID)
+		checkinID, err := strconv.ParseUint(csvRecord.CheckinID, 10, 64)
 		if err != nil {
 			log.Printf("invalid checkin ID %q: %v", csvRecord.CheckinID, err)
 			return

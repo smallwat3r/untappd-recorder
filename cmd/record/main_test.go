@@ -10,14 +10,14 @@ import (
 )
 
 type mockStorage struct {
-	GetLatestCheckinIDFunc    func(ctx context.Context) (int, error)
+	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
 	UploadFunc                func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
 }
 
-func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (int, error) {
+func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	if m.GetLatestCheckinIDFunc != nil {
 		return m.GetLatestCheckinIDFunc(ctx)
 	}
@@ -65,14 +65,14 @@ func (m *mockStorage) CheckinExists(
 type mockUntappdClient struct {
 	FetchCheckinsFunc func(
 		ctx context.Context,
-		sinceID int,
+		sinceID uint64,
 		checkinProcessor func(context.Context, []untappd.Checkin) error,
 	) error
 }
 
 func (m *mockUntappdClient) FetchCheckins(
 	ctx context.Context,
-	sinceID int,
+	sinceID uint64,
 	checkinProcessor func(context.Context, []untappd.Checkin) error,
 ) error {
 	if m.FetchCheckinsFunc != nil {
@@ -152,7 +152,7 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	mockUntappd := &mockUntappdClient{
 		FetchCheckinsFunc: func(
 			ctx context.Context,
-			sinceID int,
+			sinceID uint64,
 			checkinProcessor func(context.Context, []untappd.Checkin) error,
 		) error {
 			checkins := []untappd.Checkin{
@@ -197,7 +197,7 @@ func TestRun(t *testing.T) {
 	getLatestCheckinIDCalled := false
 
 	mockStore := &mockStorage{
-		GetLatestCheckinIDFunc: func(ctx context.Context) (int, error) {
+		GetLatestCheckinIDFunc: func(ctx context.Context) (uint64, error) {
 			getLatestCheckinIDCalled = true
 			return 123, nil
 		},
@@ -208,7 +208,7 @@ func TestRun(t *testing.T) {
 	mockUntappd := &mockUntappdClient{
 		FetchCheckinsFunc: func(
 			ctx context.Context,
-			sinceID int,
+			sinceID uint64,
 			checkinProcessor func(context.Context, []untappd.Checkin) error,
 		) error {
 			fetchCheckinsCalled = true

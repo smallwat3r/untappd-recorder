@@ -26,7 +26,7 @@ type Pagination struct {
 }
 
 type Checkin struct {
-	CheckinID      int     `json:"checkin_id"`
+	CheckinID      uint64  `json:"checkin_id"`
 	CheckinComment string  `json:"checkin_comment"`
 	RatingScore    float64 `json:"rating_score"`
 	CreatedAt      string  `json:"created_at"`

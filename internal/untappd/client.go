@@ -16,7 +16,7 @@ import (
 type UntappdClient interface {
 	FetchCheckins(
 		ctx context.Context,
-		sinceID int,
+		sinceID uint64,
 		checkinProcessor func(context.Context, []Checkin) error,
 	) error
 }
@@ -52,7 +52,7 @@ func (c *Client) handleResponse(
 	ctx context.Context,
 	resp *http.Response,
 	checkinProcessor func(context.Context, []Checkin) error,
-) (int, bool, error) {
+) (uint64, bool, error) {
 	if resp.StatusCode != http.StatusOK {
 		return 0, true, fmt.Errorf("API request failed with status: %s", resp.Status)
 	}
@@ -97,7 +97,7 @@ func (c *Client) handleResponse(
 	return nextMinID, false, nil
 }
 
-func parseMinID(rawURL string) (int, error) {
+func parseMinID(rawURL string) (uint64, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse URL %q: %w", rawURL, err)
@@ -108,18 +108,18 @@ func parseMinID(rawURL string) (int, error) {
 		return 0, fmt.Errorf("min_id not found in %q", rawURL)
 	}
 
-	v, err := strconv.ParseInt(minIDStr, 10, 0)
+	v, err := strconv.ParseUint(minIDStr, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse min_id %q: %w", minIDStr, err)
 	}
 
-	return int(v), nil
+	return v, nil
 }
 
 func (c *Client) buildRequest(
 	ctx context.Context,
 	endpoint string,
-	minID int,
+	minID uint64,
 ) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -129,7 +129,7 @@ func (c *Client) buildRequest(
 	q := req.URL.Query()
 	q.Add("access_token", c.cfg.UntappdAccessToken)
 	if minID != 0 {
-		q.Add("min_id", strconv.Itoa(minID))
+		q.Add("min_id", strconv.FormatUint(minID, 10))
 	} else {
 		// if sinceID is 0, it means we are starting from scratch, so we only
 		// want to fetch the first checkin and stop.
@@ -142,7 +142,7 @@ func (c *Client) buildRequest(
 
 func (c *Client) FetchCheckins(
 	ctx context.Context,
-	sinceID int,
+	sinceID uint64,
 	checkinProcessor func(context.Context, []Checkin) error,
 ) error {
 	endpoint := "https://api.untappd.com/v4/user/checkins"

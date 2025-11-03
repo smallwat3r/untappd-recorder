@@ -121,7 +121,7 @@ func saveCheckin(
 	}
 
 	metadata := &storage.CheckinMetadata{
-		ID:             strconv.Itoa(checkin.CheckinID),
+		ID:             strconv.FormatUint(checkin.CheckinID, 10),
 		Beer:           checkin.Beer.BeerName,
 		Brewery:        checkin.Brewery.BreweryName,
 		BreweryCountry: checkin.Brewery.BreweryCountry,
