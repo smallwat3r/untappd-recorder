@@ -9,7 +9,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 go build -o /out/record ./cmd/record
 
-FROM gcr.io/distroless/base
+FROM gcr.io/distroless/static
 
 COPY --from=builder --chown=nonroot:nonroot /out/record /usr/local/bin/record
 
