@@ -16,7 +16,7 @@ The project consists of two main parts:
 
 ### Configuration
 
-Create a `.env` file in the root of the project and add the following environment variables:
+Add the following environment variables to your service:
 
 ```
 UNTAPPD_ACCESS_TOKEN="your_untappd_api_token"
