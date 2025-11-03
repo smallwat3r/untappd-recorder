@@ -7,12 +7,10 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o /out/backfill ./cmd/backfill
 RUN CGO_ENABLED=0 go build -o /out/record ./cmd/record
 
 FROM gcr.io/distroless/base
 
-COPY --from=builder --chown=nonroot:nonroot /out/backfill /usr/local/bin/backfill
 COPY --from=builder --chown=nonroot:nonroot /out/record /usr/local/bin/record
 
 COPY --chown=nonroot:nonroot img/ /img/

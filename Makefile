@@ -7,6 +7,11 @@ GOMOD=$(GOCMD) mod
 GOFMT=$(GOCMD) fmt
 GOVET=$(GOCMD) vet
 
+# Docker
+DOCKER_IMAGE_NAME=untappd-recorder
+DOCKER_TAG=latest
+DOCKER_HUB_REPO=smallwat3r/untappd-recorder
+
 # Directories
 BIN_DIR=bin
 
@@ -60,3 +65,13 @@ lint: ## Lint Go source files
 	$(GOVET) ./...
 	@command -v staticcheck >/dev/null 2>&1 || (echo "Installing staticcheck..."; go install honnef.co/go/tools/cmd/staticcheck@latest)
 	@staticcheck ./...
+
+.PHONY: docker-build
+docker-build: ## Build Docker image for the application
+	@docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) .
+
+.PHONY: docker-release
+docker-release: docker-build ## Tag and push Docker image to Docker Hub
+	@echo "Releasing Docker image to Docker Hub..."
+	@docker tag $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) $(DOCKER_HUB_REPO):$(DOCKER_TAG)
+	@docker push $(DOCKER_HUB_REPO):$(DOCKER_TAG)
