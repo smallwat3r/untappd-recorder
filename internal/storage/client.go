@@ -155,8 +155,11 @@ func (c *Client) CopyObject(
 	return c.s3Client.CopyObject(ctx, params, optFns...)
 }
 
+const (
+	latestKey = "latest.jpg"
+)
+
 func (c *Client) GetLatestCheckinID(ctx context.Context) (uint64, error) {
-	const latestKey = "latest.jpg"
 	const metaKeyID = "id"
 
 	h, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
@@ -199,7 +202,6 @@ func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Chec
 
 	dir := t.Format("2006/01/02")
 	key := path.Join(dir, fmt.Sprintf("%d.jpg", checkin.CheckinID))
-	latestKey := "latest.jpg"
 
 	copySource := c.bucketName + "/" + url.PathEscape(key)
 
