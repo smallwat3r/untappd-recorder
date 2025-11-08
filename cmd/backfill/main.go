@@ -13,16 +13,12 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"github.com/smallwat3r/untappd-recorder/internal/vips"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func main() {
-	vips.Startup(nil)
-	defer vips.Shutdown()
-
 	csvPath := flag.String("csv", "", "path to a CSV file to backfill from")
 	flag.Parse()
 

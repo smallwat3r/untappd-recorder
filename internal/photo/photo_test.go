@@ -10,14 +10,7 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"github.com/smallwat3r/untappd-recorder/internal/vips"
 )
-
-func TestMain(m *testing.M) {
-	vips.Startup(nil)
-	defer vips.Shutdown()
-	os.Exit(m.Run())
-}
 
 type mockStorage struct {
 	UploadJPGFunc             func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
@@ -103,7 +96,6 @@ func (m *mockStorage) UpdateLatestCheckinID(
 }
 
 func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
-	// Read a real image file for testing govips
 	imgData, err := os.ReadFile("../../img/missing.jpg")
 	if err != nil {
 		t.Fatalf("failed to read missing.jpg: %v", err)
@@ -249,7 +241,6 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 }
 
 func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
-	// read a real image file for testing govips
 	imgData, err := os.ReadFile("../../img/missing.jpg")
 	if err != nil {
 		t.Fatalf("failed to read missing.jpg: %v", err)

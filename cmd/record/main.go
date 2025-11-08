@@ -10,15 +10,11 @@ import (
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"github.com/smallwat3r/untappd-recorder/internal/vips"
 	"strconv"
 	"sync"
 )
 
 func main() {
-	vips.Startup(nil)
-	defer vips.Shutdown()
-
 	if err := run(context.Background(), nil, nil); err != nil {
 		log.Fatalf("record failed: %v", err)
 	}
