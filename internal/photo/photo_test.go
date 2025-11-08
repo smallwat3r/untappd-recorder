@@ -241,13 +241,23 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 }
 
 func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
+	// read a real image file for testing govips
 	imgData, err := os.ReadFile("../../img/missing.jpg")
 	if err != nil {
 		t.Fatalf("failed to read missing.jpg: %v", err)
 	}
 
+	t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
+	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
+	t.Setenv("BUCKET_NAME", "test")
+	t.Setenv("NUM_WORKERS", "1")
+	_, err = config.Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+
 	tests := []struct {
-		name                   string
+		name                    string
 		expectedDownloadCalls   int
 		expectedUploadWEBPCalls int
 		expectedErr             bool
