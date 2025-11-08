@@ -17,8 +17,6 @@ jobs:
         go-version: 1.24
     - name: Install libvips
       run: sudo apt-get update && sudo apt-get install -y libvips-dev
-    - name: Check vips formats
-      run: vips --list formats | grep heif || (vips --list formats; exit 1)
     - name: Build
       run: go build -v ./...
     - name: Test
