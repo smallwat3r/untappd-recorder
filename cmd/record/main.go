@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
+	"github.com/smallwat3r/untappd-recorder/internal/vips"
 	"strconv"
 	"sync"
 )

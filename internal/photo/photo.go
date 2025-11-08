@@ -10,9 +10,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
+	"github.com/smallwat3r/untappd-recorder/internal/vips"
 )
 
 type Downloader interface {
@@ -148,16 +148,15 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 }
 
 func toWEBP(b []byte) ([]byte, error) {
-	img, err := vips.NewImageFromBuffer(b)
+	img, err := vips.NewJpegloadBuffer(b, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create image from buffer: %w", err)
 	}
 	defer img.Close()
 
-	params := vips.NewWebpExportParams()
-	params.Quality = 75
-
-	webp, _, err := img.ExportWebp(params)
+	webp, err := img.WebpsaveBuffer(&vips.WebpsaveBufferOptions{
+		Q: 75,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to export webp: %w", err)
 	}

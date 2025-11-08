@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
+	"github.com/smallwat3r/untappd-recorder/internal/vips"
 )
 
 func TestMain(m *testing.M) {
@@ -262,7 +262,7 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 		expectedErr             bool
 	}{
 		{
-			name:                   "Successful WEBP conversion from downloaded JPG",
+			name:                    "Successful WEBP conversion from downloaded JPG",
 			expectedDownloadCalls:   1,
 			expectedUploadWEBPCalls: 1,
 			expectedErr:             false,

@@ -13,6 +13,8 @@ ENV CGO_ENABLED=1
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN go install github.com/cshum/vipsgen/cmd/vipsgen@latest && \
+    cd internal && vipsgen
 RUN go build -o /out/record ./cmd/record
 
 FROM alpine:3.20
