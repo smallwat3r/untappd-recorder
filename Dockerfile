@@ -2,7 +2,7 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /src
 
-RUN apk add --no-cache vips-dev \
+RUN apk add --no-cache vips-dev libheif-dev \
     && rm -rf /var/cache/apk/*
 
 COPY go.mod go.sum ./
@@ -12,7 +12,7 @@ RUN go build -o /out/record ./cmd/record
 
 FROM alpine:3.20
 
-RUN apk add --no-cache vips \
+RUN apk add --no-cache vips libheif \
     && rm -rf /var/cache/apk/*
 
 COPY --from=builder --chown=nobody:nogroup /out/record /usr/local/bin/record
