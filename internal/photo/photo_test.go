@@ -109,12 +109,6 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 		t.Fatalf("failed to read missing.jpg: %v", err)
 	}
 
-	t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
-	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
-	t.Setenv("BUCKET_NAME", "test")
-	t.Setenv("NUM_WORKERS", "1")
-	cfg, _ := config.Load()
-
 	tests := []struct {
 		name                    string
 		photoURL                string
@@ -155,6 +149,15 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
+			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
+			t.Setenv("BUCKET_NAME", "test")
+			t.Setenv("NUM_WORKERS", "1")
+			cfg, err := config.Load()
+			if err != nil {
+				t.Fatalf("failed to load config: %v", err)
+			}
+
 			server := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(tt.serverStatus)
@@ -203,7 +206,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 				photoURL = server.URL + "/photo.jpg"
 			}
 
-			err := downloader.DownloadAndSave(
+			err = downloader.DownloadAndSave(
 				context.Background(),
 				cfg,
 				mockStore,
@@ -247,15 +250,6 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 		t.Fatalf("failed to read missing.jpg: %v", err)
 	}
 
-	t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
-	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
-	t.Setenv("BUCKET_NAME", "test")
-	t.Setenv("NUM_WORKERS", "1")
-	_, err = config.Load()
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-
 	tests := []struct {
 		name                    string
 		expectedDownloadCalls   int
@@ -272,6 +266,15 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
+			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
+			t.Setenv("BUCKET_NAME", "test")
+			t.Setenv("NUM_WORKERS", "1")
+			_, err := config.Load()
+			if err != nil {
+				t.Fatalf("failed to load config: %v", err)
+			}
+
 			downloader := NewDownloader()
 			metadata := &storage.CheckinMetadata{
 				ID:   "123",
@@ -299,7 +302,7 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 				},
 			}
 
-			err := downloader.DownloadAndSaveWEBP(
+			err = downloader.DownloadAndSaveWEBP(
 				context.Background(),
 				mockStore,
 				metadata,
