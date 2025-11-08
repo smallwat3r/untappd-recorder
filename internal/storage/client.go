@@ -93,7 +93,7 @@ func newS3Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Upload(ctx context.Context, file []byte, md *CheckinMetadata) error {
+func (c *Client) UploadJPG(ctx context.Context, file []byte, md *CheckinMetadata) error {
 	t, err := time.Parse(time.RFC1123Z, md.Date)
 	if err != nil {
 		return fmt.Errorf("parse checkin date %q: %w", md.Date, err)
@@ -111,6 +111,33 @@ func (c *Client) Upload(ctx context.Context, file []byte, md *CheckinMetadata) e
 		Body:        bytes.NewReader(file),
 		Metadata:    md.ToMap(),
 		ContentType: aws.String("image/jpeg"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upload object %q: %w", key, err)
+	}
+
+	return nil
+}
+
+func (c *Client) UploadAVIF(ctx context.Context, file []byte, md *CheckinMetadata) error {
+	t, err := time.Parse(time.RFC1123Z, md.Date)
+	if err != nil {
+		return fmt.Errorf("parse checkin date %q: %w", md.Date, err)
+	}
+
+	// YYYY/MM/DD/AVIF/id.avif
+	key := path.Join(
+		t.Format("2006/01/02"),
+		"AVIF",
+		fmt.Sprintf("%s.avif", md.ID),
+	)
+
+	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(c.bucketName),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(file),
+		Metadata:    md.ToMap(),
+		ContentType: aws.String("image/avif"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload object %q: %w", key, err)
@@ -224,16 +251,34 @@ func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Chec
 }
 
 func (c *Client) CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
+	return c.checkinExists(ctx, checkinID, createdAt, false)
+}
+
+func (c *Client) CheckinAVIFExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
+	return c.checkinExists(ctx, checkinID, createdAt, true)
+}
+
+func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt string, avif bool) (bool, error) {
 	t, err := time.Parse("2006-01-02 15:04:05", createdAt)
 	if err != nil {
 		return false, fmt.Errorf("parse checkin date %q: %w", createdAt, err)
 	}
 
-	// YYYY/MM/DD/id.jpg
-	key := path.Join(
-		t.Format("2006/01/02"),
-		fmt.Sprintf("%s.jpg", checkinID),
-	)
+	var key string
+	if avif {
+		// YYYY/MM/DD/AVIF/id.avif
+		key = path.Join(
+			t.Format("2006/01/02"),
+			"AVIF",
+			fmt.Sprintf("%s.avif", checkinID),
+		)
+	} else {
+		// YYYY/MM/DD/id.jpg
+		key = path.Join(
+			t.Format("2006/01/02"),
+			fmt.Sprintf("%s.jpg", checkinID),
+		)
+	}
 
 	_, err = c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(c.bucketName),

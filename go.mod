@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.20
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.1
 	github.com/caarlos0/env/v6 v6.10.1
+	github.com/davidbyttow/govips/v2 v2.16.0
 	golang.org/x/sync v0.17.0
 )
 
@@ -26,4 +27,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.39.0 // indirect
 	github.com/aws/smithy-go v1.23.1 // indirect
+	golang.org/x/image v0.18.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 )

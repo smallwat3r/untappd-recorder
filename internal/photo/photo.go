@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
@@ -18,6 +20,11 @@ type Downloader interface {
 		cfg *config.Config,
 		store storage.Storage,
 		photoURL string,
+		metadata *storage.CheckinMetadata,
+	) error
+	DownloadAndSaveAVIF(
+		ctx context.Context,
+		store storage.Storage,
 		metadata *storage.CheckinMetadata,
 	) error
 }
@@ -53,9 +60,42 @@ func (d *DefaultDownloader) DownloadAndSave(
 		return fmt.Errorf("failed to get photo: %w", err)
 	}
 
-	if err := store.Upload(ctx, b, metadata); err != nil {
+	if err := store.UploadJPG(ctx, b, metadata); err != nil {
 		return fmt.Errorf("failed to upload photo: %w", err)
 	}
+
+	return d.toAVIF(ctx, store, b, metadata)
+}
+
+func (d *DefaultDownloader) DownloadAndSaveAVIF(
+	ctx context.Context,
+	store storage.Storage,
+	metadata *storage.CheckinMetadata,
+) error {
+	key := fmt.Sprintf("%s/%s.jpg", metadata.Date, metadata.ID)
+	b, err := store.Download(ctx, key)
+	if err != nil {
+		return fmt.Errorf("failed to download photo from storage: %w", err)
+	}
+
+	return d.toAVIF(ctx, store, b, metadata)
+}
+
+func (d *DefaultDownloader) toAVIF(
+	ctx context.Context,
+	store storage.Storage,
+	b []byte,
+	metadata *storage.CheckinMetadata,
+) error {
+	avif, err := toAVIF(b)
+	if err != nil {
+		return fmt.Errorf("failed to convert to avif: %w", err)
+	}
+
+	if err := store.UploadAVIF(ctx, avif, metadata); err != nil {
+		return fmt.Errorf("failed to upload avif photo: %w", err)
+	}
+
 	return nil
 }
 
@@ -99,4 +139,20 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	}
 
 	return data, nil
+}
+
+func toAVIF(b []byte) ([]byte, error) {
+	img, err := vips.NewImageFromBuffer(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image from buffer: %w", err)
+	}
+	defer img.Close()
+
+	avif, _, err := img.ExportAvif(vips.NewAvifExportParams())
+	if err != nil {
+		return nil, fmt.Errorf("failed to export avif: %w", err)
+	}
+	log.Printf("converted to avif, size: %d", len(avif))
+
+	return avif, nil
 }

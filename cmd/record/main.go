@@ -4,19 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
-	"sync"
 
+	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
+	"strconv"
+	"sync"
 )
 
 func main() {
+	vips.Startup(nil)
+	defer vips.Shutdown()
+
 	if err := run(context.Background(), nil, nil); err != nil {
-		log.Fatal(err)
+		log.Fatalf("record failed: %v", err)
 	}
 	log.Println("Record completed successfully.")
 }
