@@ -2,8 +2,14 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /src
 
-RUN apk add --no-cache vips-dev libheif-dev \
+RUN apk add --no-cache \
+      build-base \
+      pkgconfig \
+      vips-dev \
+      libheif-dev \
     && rm -rf /var/cache/apk/*
+
+ENV CGO_ENABLED=1
 
 COPY go.mod go.sum ./
 RUN go mod download
