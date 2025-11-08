@@ -129,10 +129,12 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		// drain a small amount so connection can be reused
 		io.CopyN(io.Discard, resp.Body, 512)
 		return nil, fmt.Errorf("failed to download photo %q: status %s", urlStr, resp.Status)
 	}
 
+	// cap the read to prevent huge responses
 	limited := io.LimitReader(resp.Body, maxPhotoBytes+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
