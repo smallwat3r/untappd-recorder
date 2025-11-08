@@ -32,8 +32,14 @@ help:  ## Show this help menu
 .PHONY: all
 all: fmt lint test build ## Run all common tasks
 
+.PHONY: vipsgen
+vipsgen: ## Generate vips bindings
+	@command -v vipsgen >/dev/null 2>&1 || (echo "Installing vipsgen..."; go install github.com/cshum/vipsgen/cmd/vipsgen@latest)
+	@echo "Generating vips bindings..."
+	@cd internal && vipsgen
+
 .PHONY: build
-build: build-backfill build-record ## Build all Go applications
+build: vipsgen build-backfill build-record ## Build all Go applications
 
 .PHONY: build-backfill
 build-backfill: ## Build the backfill Go application

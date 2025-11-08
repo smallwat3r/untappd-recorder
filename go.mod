@@ -8,8 +8,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.20
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.1
 	github.com/caarlos0/env/v6 v6.10.1
-	github.com/davidbyttow/govips/v2 v2.16.0
-	github.com/stretchr/testify v1.6.1
+	github.com/cshum/vipsgen v1.2.1
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.17.0
 )
 
@@ -29,9 +29,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.39.0 // indirect
 	github.com/aws/smithy-go v1.23.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
