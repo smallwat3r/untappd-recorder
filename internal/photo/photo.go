@@ -148,7 +148,11 @@ func toAVIF(b []byte) ([]byte, error) {
 	}
 	defer img.Close()
 
-	avif, _, err := img.ExportAvif(vips.NewAvifExportParams())
+	params := vips.NewAvifExportParams()
+	params.Q = 50    // lower quality for smaller file size (default is 60)
+	params.Speed = 7 // faster, less CPU-intensive encoding (0-10, default is 5)
+
+	avif, _, err := img.ExportAvif(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to export avif: %w", err)
 	}
