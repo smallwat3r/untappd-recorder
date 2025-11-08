@@ -6,7 +6,6 @@ RUN apk add --no-cache \
       build-base \
       pkgconfig \
       vips-dev \
-      libheif-dev \
     && rm -rf /var/cache/apk/*
 
 ENV CGO_ENABLED=1
@@ -18,7 +17,7 @@ RUN go build -o /out/record ./cmd/record
 
 FROM alpine:3.20
 
-RUN apk add --no-cache vips libheif \
+RUN apk add --no-cache vips \
     && rm -rf /var/cache/apk/*
 
 COPY --from=builder --chown=nobody:nogroup /out/record /usr/local/bin/record

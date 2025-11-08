@@ -14,9 +14,9 @@ import (
 
 type mockStorage struct {
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
-	CheckinAVIFExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	CheckinWEBPExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	UploadJPGFunc             func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
-	UploadAVIFFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	UploadWEBPFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
@@ -32,12 +32,12 @@ func (m *mockStorage) CheckinExists(
 	return false, nil
 }
 
-func (m *mockStorage) CheckinAVIFExists(
+func (m *mockStorage) CheckinWEBPExists(
 	ctx context.Context,
 	checkinID, createdAt string,
 ) (bool, error) {
-	if m.CheckinAVIFExistsFunc != nil {
-		return m.CheckinAVIFExistsFunc(ctx, checkinID, createdAt)
+	if m.CheckinWEBPExistsFunc != nil {
+		return m.CheckinWEBPExistsFunc(ctx, checkinID, createdAt)
 	}
 	return false, nil
 }
@@ -67,13 +67,13 @@ func (m *mockStorage) UploadJPG(
 	return nil
 }
 
-func (m *mockStorage) UploadAVIF(
+func (m *mockStorage) UploadWEBP(
 	ctx context.Context,
 	file []byte,
 	metadata *storage.CheckinMetadata,
 ) error {
-	if m.UploadAVIFFunc != nil {
-		return m.UploadAVIFFunc(ctx, file, metadata)
+	if m.UploadWEBPFunc != nil {
+		return m.UploadWEBPFunc(ctx, file, metadata)
 	}
 	return nil
 }
@@ -93,7 +93,7 @@ type mockDownloader struct {
 		photoURL string,
 		metadata *storage.CheckinMetadata,
 	) error
-	DownloadAndSaveAVIFFunc func(
+	DownloadAndSaveWEBPFunc func(
 		ctx context.Context,
 		store storage.Storage,
 		metadata *storage.CheckinMetadata,
@@ -113,13 +113,13 @@ func (m *mockDownloader) DownloadAndSave(
 	return nil
 }
 
-func (m *mockDownloader) DownloadAndSaveAVIF(
+func (m *mockDownloader) DownloadAndSaveWEBP(
 	ctx context.Context,
 	store storage.Storage,
 	metadata *storage.CheckinMetadata,
 ) error {
-	if m.DownloadAndSaveAVIFFunc != nil {
-		return m.DownloadAndSaveAVIFFunc(ctx, store, metadata)
+	if m.DownloadAndSaveWEBPFunc != nil {
+		return m.DownloadAndSaveWEBPFunc(ctx, store, metadata)
 	}
 	return nil
 }
@@ -194,9 +194,9 @@ func TestRun(t *testing.T) {
 		t.Error("Expected DownloadAndSave to be called, but it was not")
 	}
 
-	// JPG exists, AVIF does not
+	// JPG exists, WEBP does not
 	checkinExistsCalled = false
-	downloadAndSaveAVIFCalled := false
+	downloadAndSaveWEBPCalled := false
 	mockStore = &mockStorage{
 		CheckinExistsFunc: func(
 			ctx context.Context,
@@ -205,7 +205,7 @@ func TestRun(t *testing.T) {
 			checkinExistsCalled = true
 			return true, nil
 		},
-		CheckinAVIFExistsFunc: func(
+		CheckinWEBPExistsFunc: func(
 			ctx context.Context,
 			checkinID, createdAt string,
 		) (bool, error) {
@@ -213,12 +213,12 @@ func TestRun(t *testing.T) {
 		},
 	}
 	downloader = &mockDownloader{
-		DownloadAndSaveAVIFFunc: func(
+		DownloadAndSaveWEBPFunc: func(
 			ctx context.Context,
 			store storage.Storage,
 			metadata *storage.CheckinMetadata,
 		) error {
-			downloadAndSaveAVIFCalled = true
+			downloadAndSaveWEBPCalled = true
 			if metadata.ID != "12345" {
 				t.Errorf("expected metadata ID to be 12345, got %s", metadata.ID)
 			}
@@ -233,7 +233,7 @@ func TestRun(t *testing.T) {
 	if !checkinExistsCalled {
 		t.Error("Expected CheckinExists to be called, but it was not")
 	}
-	if !downloadAndSaveAVIFCalled {
-		t.Error("Expected DownloadAndSaveAVIF to be called, but it was not")
+	if !downloadAndSaveWEBPCalled {
+		t.Error("Expected DownloadAndSaveWEBP to be called, but it was not")
 	}
 }

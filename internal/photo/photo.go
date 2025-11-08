@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/davidbyttow/govips/v2/vips"
@@ -22,7 +23,7 @@ type Downloader interface {
 		photoURL string,
 		metadata *storage.CheckinMetadata,
 	) error
-	DownloadAndSaveAVIF(
+	DownloadAndSaveWEBP(
 		ctx context.Context,
 		store storage.Storage,
 		metadata *storage.CheckinMetadata,
@@ -64,36 +65,41 @@ func (d *DefaultDownloader) DownloadAndSave(
 		return fmt.Errorf("failed to upload photo: %w", err)
 	}
 
-	return d.toAVIF(ctx, store, b, metadata)
+	return d.toWEBP(ctx, store, b, metadata)
 }
 
-func (d *DefaultDownloader) DownloadAndSaveAVIF(
+func (d *DefaultDownloader) DownloadAndSaveWEBP(
 	ctx context.Context,
 	store storage.Storage,
 	metadata *storage.CheckinMetadata,
 ) error {
-	key := fmt.Sprintf("%s/%s.jpg", metadata.Date, metadata.ID)
+	// refetch the original JPG to perform the conversion
+	t, err := time.Parse(time.RFC1123Z, metadata.Date)
+	if err != nil {
+		return fmt.Errorf("parse checkin date %q: %w", metadata.Date, err)
+	}
+	key := path.Join(t.Format("2006/01/02"), fmt.Sprintf("%s.jpg", metadata.ID))
 	b, err := store.Download(ctx, key)
 	if err != nil {
 		return fmt.Errorf("failed to download photo from storage: %w", err)
 	}
 
-	return d.toAVIF(ctx, store, b, metadata)
+	return d.toWEBP(ctx, store, b, metadata)
 }
 
-func (d *DefaultDownloader) toAVIF(
+func (d *DefaultDownloader) toWEBP(
 	ctx context.Context,
 	store storage.Storage,
 	b []byte,
 	metadata *storage.CheckinMetadata,
 ) error {
-	avif, err := toAVIF(b)
+	webp, err := toWEBP(b)
 	if err != nil {
-		return fmt.Errorf("failed to convert to avif: %w", err)
+		return fmt.Errorf("failed to convert to webp: %w", err)
 	}
 
-	if err := store.UploadAVIF(ctx, avif, metadata); err != nil {
-		return fmt.Errorf("failed to upload avif photo: %w", err)
+	if err := store.UploadWEBP(ctx, webp, metadata); err != nil {
+		return fmt.Errorf("failed to upload webp photo: %w", err)
 	}
 
 	return nil
@@ -123,12 +129,10 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		// drain a small amount so connection can be reused
 		io.CopyN(io.Discard, resp.Body, 512)
 		return nil, fmt.Errorf("failed to download photo %q: status %s", urlStr, resp.Status)
 	}
 
-	// cap the read to prevent huge responses
 	limited := io.LimitReader(resp.Body, maxPhotoBytes+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
@@ -141,22 +145,21 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	return data, nil
 }
 
-func toAVIF(b []byte) ([]byte, error) {
+func toWEBP(b []byte) ([]byte, error) {
 	img, err := vips.NewImageFromBuffer(b)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create image from buffer: %w", err)
 	}
 	defer img.Close()
 
-	params := vips.NewAvifExportParams()
-	params.Quality = 50 // lower quality for smaller file size (default is 60)
-	params.Effort = 7   // faster, less CPU-intensive encoding (0-9, default is 4)
+	params := vips.NewWebpExportParams()
+	params.Quality = 75
 
-	avif, _, err := img.ExportAvif(params)
+	webp, _, err := img.ExportWebp(params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to export avif: %w", err)
+		return nil, fmt.Errorf("failed to export webp: %w", err)
 	}
-	log.Printf("converted to avif, size: %d", len(avif))
+	log.Printf("converted to webp, size: %d", len(webp))
 
-	return avif, nil
+	return webp, nil
 }

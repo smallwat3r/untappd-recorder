@@ -15,19 +15,8 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: 1.24
-    - name: Install libvips with AVIF
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y curl gpg
-        curl -fsSL https://dl.lovell.info/apt/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/lovell-vips.gpg
-        echo "deb [signed-by=/usr/share/keyrings/lovell-vips.gpg] https://dl.lovell.info/apt/ubuntu $(lsb_release -sc) main" \
-          | sudo tee /etc/apt/sources.list.d/lovell-vips.list
-        sudo apt-get update
-        sudo apt-get install -y \
-          libvips-dev \
-          libheif-dev \
-          libaom-dev \
-          libde265-dev
+    - name: Install libvips
+      run: sudo apt-get update && sudo apt-get install -y libvips-dev
     - name: Check vips formats
       run: vips --list formats | grep heif || (vips --list formats; exit 1)
     - name: Build

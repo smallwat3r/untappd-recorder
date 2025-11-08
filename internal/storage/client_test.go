@@ -8,14 +8,39 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockS3Client struct {
-	putObject     func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-	getObject     func(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
-	copyObject    func(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
-	headObject    func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
-	listObjectsV2 func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+	putObject func(
+		ctx context.Context,
+		params *s3.PutObjectInput,
+		optFns ...func(*s3.Options),
+	) (*s3.PutObjectOutput, error)
+
+	getObject func(
+		ctx context.Context,
+		params *s3.GetObjectInput,
+		optFns ...func(*s3.Options),
+	) (*s3.GetObjectOutput, error)
+
+	copyObject func(
+		ctx context.Context,
+		params *s3.CopyObjectInput,
+		optFns ...func(*s3.Options),
+	) (*s3.CopyObjectOutput, error)
+
+	headObject func(
+		ctx context.Context,
+		params *s3.HeadObjectInput,
+		optFns ...func(*s3.Options),
+	) (*s3.HeadObjectOutput, error)
+
+	listObjectsV2 func(
+		ctx context.Context,
+		params *s3.ListObjectsV2Input,
+		optFns ...func(*s3.Options),
+	) (*s3.ListObjectsV2Output, error)
 }
 
 func (m *mockS3Client) PutObject(
@@ -64,7 +89,11 @@ func (m *mockS3Client) HeadObject(
 func TestClient_UploadJPG(t *testing.T) {
 	var putObjectCalled bool
 	mockS3 := &mockS3Client{
-		putObject: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+		putObject: func(
+			ctx context.Context,
+			params *s3.PutObjectInput,
+			optFns ...func(*s3.Options),
+		) (*s3.PutObjectOutput, error) {
 			putObjectCalled = true
 			if *params.Bucket != "test-bucket" {
 				t.Errorf("expected bucket to be 'test-bucket', got %s", *params.Bucket)
@@ -96,65 +125,45 @@ func TestClient_UploadJPG(t *testing.T) {
 	}
 }
 
-func TestClient_UploadAVIF(t *testing.T) {
-	var putObjectCalled bool
-	mockS3 := &mockS3Client{
+func TestClient_UploadWEBP(t *testing.T) {
+	mockClient := &mockS3Client{
 		putObject: func(
 			ctx context.Context,
 			params *s3.PutObjectInput,
 			optFns ...func(*s3.Options),
 		) (*s3.PutObjectOutput, error) {
-			putObjectCalled = true
-			if *params.Bucket != "test-bucket" {
-				t.Errorf("expected bucket to be 'test-bucket', got %s", *params.Bucket)
-			}
-			expectedKey := "2025/11/01/AVIF/123.avif"
-			if *params.Key != expectedKey {
-				t.Errorf("expected key to be '%s', got %s", expectedKey, *params.Key)
-			}
 			return &s3.PutObjectOutput{}, nil
 		},
 	}
 
-	client := &Client{
-		s3Client:   mockS3,
-		bucketName: "test-bucket",
-	}
+	client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
+	metadata := &CheckinMetadata{ID: "123", Date: "Sat, 01 Nov 2025 00:00:00 +0000"}
 
-	metadata := &CheckinMetadata{
-		ID:   "123",
-		Date: "Sat, 01 Nov 2025 00:00:00 +0000",
-	}
-	err := client.UploadAVIF(context.Background(), []byte("test"), metadata)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !putObjectCalled {
-		t.Errorf("expected PutObject to be called, but it wasn't")
-	}
+	err := client.UploadWEBP(context.Background(), []byte("webp-data"), metadata)
+	assert.NoError(t, err)
 }
 
-func TestClient_CheckinAVIFExists(t *testing.T) {
-	tests := []struct {
-		name        string
-		expectedKey string
-		headObject  func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
-		expected    bool
-		expectedErr error
-	}{
-		{
-			name:        "AVIF exists",
-			expectedKey: "2025/11/01/AVIF/123.avif",
-			headObject: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+func TestClient_CheckinWEBPExists(t *testing.T) {
+	t.Run("WEBP_exists", func(t *testing.T) {
+		mockClient := &mockS3Client{
+			headObject: func(
+				ctx context.Context,
+				params *s3.HeadObjectInput,
+				optFns ...func(*s3.Options),
+			) (*s3.HeadObjectOutput, error) {
 				return &s3.HeadObjectOutput{}, nil
 			},
-			expected:    true,
-			expectedErr: nil,
-		},
-		{
-			name:        "AVIF does not exist",
-			expectedKey: "2025/11/01/AVIF/123.avif",
+		}
+
+		client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
+		exists, err := client.CheckinWEBPExists(context.Background(), "123", "2025-11-01 00:00:00")
+
+		assert.NoError(t, err)
+		assert.True(t, exists)
+	})
+
+	t.Run("WEBP_does_not_exist", func(t *testing.T) {
+		mockClient := &mockS3Client{
 			headObject: func(
 				ctx context.Context,
 				params *s3.HeadObjectInput,
@@ -162,12 +171,17 @@ func TestClient_CheckinAVIFExists(t *testing.T) {
 			) (*s3.HeadObjectOutput, error) {
 				return nil, &types.NotFound{}
 			},
-			expected:    false,
-			expectedErr: nil,
-		},
-		{
-			name:        "Error on HeadObject",
-			expectedKey: "2025/11/01/AVIF/123.avif",
+		}
+
+		client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
+		exists, err := client.CheckinWEBPExists(context.Background(), "123", "2025-11-01 00:00:00")
+
+		assert.NoError(t, err)
+		assert.False(t, exists)
+	})
+
+	t.Run("Error_on_HeadObject", func(t *testing.T) {
+		mockClient := &mockS3Client{
 			headObject: func(
 				ctx context.Context,
 				params *s3.HeadObjectInput,
@@ -175,35 +189,13 @@ func TestClient_CheckinAVIFExists(t *testing.T) {
 			) (*s3.HeadObjectOutput, error) {
 				return nil, errors.New("some error")
 			},
-			expected:    false,
-			expectedErr: errors.New(`failed to head "2025/11/01/AVIF/123.avif": some error`),
-		},
-	}
+		}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			mockS3 := &mockS3Client{
-				headObject: test.headObject,
-			}
-			client := &Client{
-				s3Client:   mockS3,
-				bucketName: "test-bucket",
-			}
+		client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
+		_, err := client.CheckinWEBPExists(context.Background(), "123", "2025-11-01 00:00:00")
 
-			exists, err := client.CheckinAVIFExists(context.Background(), "123", "2025-11-01 00:00:00")
-			if test.expectedErr != nil {
-				if err == nil || err.Error() != test.expectedErr.Error() {
-					t.Errorf("expected error %v, got %v", test.expectedErr, err)
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if exists != test.expected {
-				t.Errorf("expected exists to be %v, got %v", test.expected, exists)
-			}
-		})
-	}
+		assert.Error(t, err)
+	})
 }
 
 func TestNewClient_R2(t *testing.T) {

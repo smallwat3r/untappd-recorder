@@ -9,10 +9,10 @@ import (
 
 type Storage interface {
 	UploadJPG(ctx context.Context, file []byte, metadata *CheckinMetadata) error
-	UploadAVIF(ctx context.Context, file []byte, metadata *CheckinMetadata) error
+	UploadWEBP(ctx context.Context, file []byte, metadata *CheckinMetadata) error
 	Download(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error)
-	CheckinAVIFExists(ctx context.Context, checkinID, createdAt string) (bool, error)
+	CheckinWEBPExists(ctx context.Context, checkinID, createdAt string) (bool, error)
 	GetLatestCheckinID(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error
 }

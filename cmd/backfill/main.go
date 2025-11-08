@@ -158,19 +158,19 @@ func processCSVRecords(
 		}
 
 		if exists {
-			avifExists, err := store.CheckinAVIFExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
+			webpExists, err := store.CheckinWEBPExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
 			if err != nil {
-				log.Printf("failed checking avif exists(%d): %v", checkinID, err)
+				log.Printf("failed checking webp exists(%d): %v", checkinID, err)
 				return
 			}
-			if avifExists {
-				log.Printf("checkin %d avif exists, skipping", checkinID)
+			if webpExists {
+				log.Printf("checkin %d webp exists, skipping", checkinID)
 				return
 			}
 
-			log.Printf("Backfilling AVIF for checkin %d", checkinID)
-			if err := saveAVIFFromJPG(ctx, store, cfg, csvRecord, downloader); err != nil {
-				log.Printf("failed to save avif(%d): %v", checkinID, err)
+			log.Printf("Backfilling WEBP for checkin %d", checkinID)
+			if err := saveWEBPFromJPG(ctx, store, cfg, csvRecord, downloader); err != nil {
+				log.Printf("failed to save webp(%d): %v", checkinID, err)
 			}
 			return
 		}
@@ -251,7 +251,7 @@ func saveRecord(
 	cfg *config.Config,
 	record *CSVRecord,
 	downloader photo.Downloader,
-	saveAVIF bool,
+	saveWEBP bool,
 ) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
@@ -275,8 +275,8 @@ func saveRecord(
 		ABV:            record.BeerABV,
 	}
 
-	if saveAVIF {
-		return downloader.DownloadAndSaveAVIF(ctx, store, metadata)
+	if saveWEBP {
+		return downloader.DownloadAndSaveWEBP(ctx, store, metadata)
 	}
 	return downloader.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
 }
@@ -290,7 +290,7 @@ func saveCSVRecord(ctx context.Context,
 	return saveRecord(ctx, store, cfg, record, downloader, false)
 }
 
-func saveAVIFFromJPG(
+func saveWEBPFromJPG(
 	ctx context.Context,
 	store storage.Storage,
 	cfg *config.Config,

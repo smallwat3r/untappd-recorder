@@ -21,10 +21,10 @@ func TestMain(m *testing.M) {
 
 type mockStorage struct {
 	UploadJPGFunc             func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
-	UploadAVIFFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	UploadWEBPFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
-	CheckinAVIFExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	CheckinWEBPExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
 }
@@ -40,18 +40,21 @@ func (m *mockStorage) UploadJPG(
 	return nil
 }
 
-func (m *mockStorage) UploadAVIF(
+func (m *mockStorage) UploadWEBP(
 	ctx context.Context,
 	file []byte,
 	metadata *storage.CheckinMetadata,
 ) error {
-	if m.UploadAVIFFunc != nil {
-		return m.UploadAVIFFunc(ctx, file, metadata)
+	if m.UploadWEBPFunc != nil {
+		return m.UploadWEBPFunc(ctx, file, metadata)
 	}
 	return nil
 }
 
-func (m *mockStorage) Download(ctx context.Context, fileName string) ([]byte, error) {
+func (m *mockStorage) Download(
+	ctx context.Context,
+	fileName string,
+) ([]byte, error) {
 	if m.DownloadFunc != nil {
 		return m.DownloadFunc(ctx, fileName)
 	}
@@ -60,7 +63,8 @@ func (m *mockStorage) Download(ctx context.Context, fileName string) ([]byte, er
 
 func (m *mockStorage) CheckinExists(
 	ctx context.Context,
-	checkinID, createdAt string,
+	checkinID,
+	createdAt string,
 ) (bool, error) {
 	if m.CheckinExistsFunc != nil {
 		return m.CheckinExistsFunc(ctx, checkinID, createdAt)
@@ -68,24 +72,30 @@ func (m *mockStorage) CheckinExists(
 	return false, nil
 }
 
-func (m *mockStorage) CheckinAVIFExists(
+func (m *mockStorage) CheckinWEBPExists(
 	ctx context.Context,
-	checkinID, createdAt string,
+	checkinID,
+	createdAt string,
 ) (bool, error) {
-	if m.CheckinAVIFExistsFunc != nil {
-		return m.CheckinAVIFExistsFunc(ctx, checkinID, createdAt)
+	if m.CheckinWEBPExistsFunc != nil {
+		return m.CheckinWEBPExistsFunc(ctx, checkinID, createdAt)
 	}
 	return false, nil
 }
 
-func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
+func (m *mockStorage) GetLatestCheckinID(
+	ctx context.Context,
+) (uint64, error) {
 	if m.GetLatestCheckinIDFunc != nil {
 		return m.GetLatestCheckinIDFunc(ctx)
 	}
 	return 0, nil
 }
 
-func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
+func (m *mockStorage) UpdateLatestCheckinID(
+	ctx context.Context,
+	checkin untappd.Checkin,
+) error {
 	if m.UpdateLatestCheckinIDFunc != nil {
 		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
 	}
@@ -93,7 +103,7 @@ func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd
 }
 
 func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
-	// read a real image file for testing govips
+	// Read a real image file for testing govips
 	imgData, err := os.ReadFile("../../img/missing.jpg")
 	if err != nil {
 		t.Fatalf("failed to read missing.jpg: %v", err)
@@ -108,7 +118,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 		serverStatus            int
 		serverBody              []byte
 		expectedUploadJPGCalls  int
-		expectedUploadAVIFCalls int
+		expectedUploadWEBPCalls int
 		expectedErr             bool
 	}{
 		{
@@ -117,7 +127,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			serverStatus:            http.StatusOK,
 			serverBody:              imgData,
 			expectedUploadJPGCalls:  1,
-			expectedUploadAVIFCalls: 1,
+			expectedUploadWEBPCalls: 1,
 			expectedErr:             false,
 		},
 		{
@@ -126,7 +136,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			serverStatus:            http.StatusOK, // not used for placeholder
 			serverBody:              nil,
 			expectedUploadJPGCalls:  1,
-			expectedUploadAVIFCalls: 1,
+			expectedUploadWEBPCalls: 1,
 			expectedErr:             false,
 		},
 		{
@@ -135,35 +145,52 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			serverStatus:            http.StatusNotFound,
 			serverBody:              []byte("not found"),
 			expectedUploadJPGCalls:  0,
-			expectedUploadAVIFCalls: 0,
+			expectedUploadWEBPCalls: 0,
 			expectedErr:             true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tt.serverStatus)
-				w.Write(tt.serverBody)
-			}))
+			server := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(tt.serverStatus)
+					w.Write(tt.serverBody)
+				}),
+			)
 			defer server.Close()
 
 			downloader := NewDownloader()
-			metadata := &storage.CheckinMetadata{ID: "123", Date: "Sat, 01 Nov 2025 00:00:00 +0000"}
+			metadata := &storage.CheckinMetadata{
+				ID:   "123",
+				Date: "Sat, 01 Nov 2025 00:00:00 +0000",
+			}
 
 			var uploadJPGCalls int
-			var uploadAVIFCalls int
+			var uploadWEBPCalls int
+
 			mockStore := &mockStorage{
-				UploadJPGFunc: func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error {
+				UploadJPGFunc: func(
+					ctx context.Context,
+					file []byte,
+					metadata *storage.CheckinMetadata,
+				) error {
 					uploadJPGCalls++
 					return nil
 				},
-				UploadAVIFFunc: func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error {
-					uploadAVIFCalls++
+				UploadWEBPFunc: func(
+					ctx context.Context,
+					file []byte,
+					metadata *storage.CheckinMetadata,
+				) error {
+					uploadWEBPCalls++
 					return nil
 				},
-				DownloadFunc: func(ctx context.Context, fileName string) ([]byte, error) {
-					// mock download for AVIF conversion from JPG
+				DownloadFunc: func(
+					ctx context.Context,
+					fileName string,
+				) ([]byte, error) {
+					// mock download for WEBP conversion from JPG
 					return imgData, nil
 				},
 			}
@@ -173,7 +200,13 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 				photoURL = server.URL + "/photo.jpg"
 			}
 
-			err := downloader.DownloadAndSave(context.Background(), cfg, mockStore, photoURL, metadata)
+			err := downloader.DownloadAndSave(
+				context.Background(),
+				cfg,
+				mockStore,
+				photoURL,
+				metadata,
+			)
 
 			if tt.expectedErr {
 				if err == nil {
@@ -186,32 +219,40 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			}
 
 			if uploadJPGCalls != tt.expectedUploadJPGCalls {
-				t.Errorf("expected %d UploadJPG calls, got %d", tt.expectedUploadJPGCalls, uploadJPGCalls)
+				t.Errorf(
+					"expected %d UploadJPG calls, got %d",
+					tt.expectedUploadJPGCalls,
+					uploadJPGCalls,
+				)
 			}
-			if uploadAVIFCalls != tt.expectedUploadAVIFCalls {
-				t.Errorf("expected %d UploadAVIF calls, got %d", tt.expectedUploadAVIFCalls, uploadAVIFCalls)
+
+			if uploadWEBPCalls != tt.expectedUploadWEBPCalls {
+				t.Errorf(
+					"expected %d UploadWEBP calls, got %d",
+					tt.expectedUploadWEBPCalls,
+					uploadWEBPCalls,
+				)
 			}
 		})
 	}
 }
 
-func TestDefaultDownloader_DownloadAndSaveAVIF(t *testing.T) {
-	// read a real image file for testing govips
+func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 	imgData, err := os.ReadFile("../../img/missing.jpg")
 	if err != nil {
 		t.Fatalf("failed to read missing.jpg: %v", err)
 	}
 
 	tests := []struct {
-		name                    string
+		name                   string
 		expectedDownloadCalls   int
-		expectedUploadAVIFCalls int
+		expectedUploadWEBPCalls int
 		expectedErr             bool
 	}{
 		{
-			name:                    "Successful AVIF conversion from downloaded JPG",
+			name:                   "Successful WEBP conversion from downloaded JPG",
 			expectedDownloadCalls:   1,
-			expectedUploadAVIFCalls: 1,
+			expectedUploadWEBPCalls: 1,
 			expectedErr:             false,
 		},
 	}
@@ -219,22 +260,37 @@ func TestDefaultDownloader_DownloadAndSaveAVIF(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			downloader := NewDownloader()
-			metadata := &storage.CheckinMetadata{ID: "123", Date: "Sat, 01 Nov 2025 00:00:00 +0000"}
+			metadata := &storage.CheckinMetadata{
+				ID:   "123",
+				Date: "Sat, 01 Nov 2025 00:00:00 +0000",
+			}
 
 			var downloadCalls int
-			var uploadAVIFCalls int
+			var uploadWEBPCalls int
+
 			mockStore := &mockStorage{
-				DownloadFunc: func(ctx context.Context, fileName string) ([]byte, error) {
+				DownloadFunc: func(
+					ctx context.Context,
+					fileName string,
+				) ([]byte, error) {
 					downloadCalls++
 					return imgData, nil
 				},
-				UploadAVIFFunc: func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error {
-					uploadAVIFCalls++
+				UploadWEBPFunc: func(
+					ctx context.Context,
+					file []byte,
+					metadata *storage.CheckinMetadata,
+				) error {
+					uploadWEBPCalls++
 					return nil
 				},
 			}
 
-			err := downloader.DownloadAndSaveAVIF(context.Background(), mockStore, metadata)
+			err := downloader.DownloadAndSaveWEBP(
+				context.Background(),
+				mockStore,
+				metadata,
+			)
 
 			if tt.expectedErr {
 				if err == nil {
@@ -247,10 +303,19 @@ func TestDefaultDownloader_DownloadAndSaveAVIF(t *testing.T) {
 			}
 
 			if downloadCalls != tt.expectedDownloadCalls {
-				t.Errorf("expected %d Download calls, got %d", tt.expectedDownloadCalls, downloadCalls)
+				t.Errorf(
+					"expected %d Download calls, got %d",
+					tt.expectedDownloadCalls,
+					downloadCalls,
+				)
 			}
-			if uploadAVIFCalls != tt.expectedUploadAVIFCalls {
-				t.Errorf("expected %d UploadAVIF calls, got %d", tt.expectedUploadAVIFCalls, uploadAVIFCalls)
+
+			if uploadWEBPCalls != tt.expectedUploadWEBPCalls {
+				t.Errorf(
+					"expected %d UploadWEBP calls, got %d",
+					tt.expectedUploadWEBPCalls,
+					uploadWEBPCalls,
+				)
 			}
 		})
 	}

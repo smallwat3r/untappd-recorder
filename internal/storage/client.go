@@ -119,17 +119,17 @@ func (c *Client) UploadJPG(ctx context.Context, file []byte, md *CheckinMetadata
 	return nil
 }
 
-func (c *Client) UploadAVIF(ctx context.Context, file []byte, md *CheckinMetadata) error {
+func (c *Client) UploadWEBP(ctx context.Context, file []byte, md *CheckinMetadata) error {
 	t, err := time.Parse(time.RFC1123Z, md.Date)
 	if err != nil {
 		return fmt.Errorf("parse checkin date %q: %w", md.Date, err)
 	}
 
-	// YYYY/MM/DD/AVIF/id.avif
+	// YYYY/MM/DD/WEBP/id.webp
 	key := path.Join(
 		t.Format("2006/01/02"),
-		"AVIF",
-		fmt.Sprintf("%s.avif", md.ID),
+		"WEBP",
+		fmt.Sprintf("%s.webp", md.ID),
 	)
 
 	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
@@ -137,7 +137,7 @@ func (c *Client) UploadAVIF(ctx context.Context, file []byte, md *CheckinMetadat
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(file),
 		Metadata:    md.ToMap(),
-		ContentType: aws.String("image/avif"),
+		ContentType: aws.String("image/webp"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload object %q: %w", key, err)
@@ -251,28 +251,29 @@ func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Chec
 }
 
 func (c *Client) CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
-	return c.checkinExists(ctx, checkinID, createdAt, false)
+	return c.checkinExists(ctx, checkinID, createdAt, "jpg")
 }
 
-func (c *Client) CheckinAVIFExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
-	return c.checkinExists(ctx, checkinID, createdAt, true)
+func (c *Client) CheckinWEBPExists(ctx context.Context, checkinID, createdAt string) (bool, error) {
+	return c.checkinExists(ctx, checkinID, createdAt, "webp")
 }
 
-func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt string, avif bool) (bool, error) {
+func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt string, format string) (bool, error) {
 	t, err := time.Parse("2006-01-02 15:04:05", createdAt)
 	if err != nil {
 		return false, fmt.Errorf("parse checkin date %q: %w", createdAt, err)
 	}
 
 	var key string
-	if avif {
-		// YYYY/MM/DD/AVIF/id.avif
+	switch format {
+	case "webp":
+		// YYYY/MM/DD/WEBP/id.webp
 		key = path.Join(
 			t.Format("2006/01/02"),
-			"AVIF",
-			fmt.Sprintf("%s.avif", checkinID),
+			"WEBP",
+			fmt.Sprintf("%s.webp", checkinID),
 		)
-	} else {
+	default:
 		// YYYY/MM/DD/id.jpg
 		key = path.Join(
 			t.Format("2006/01/02"),
