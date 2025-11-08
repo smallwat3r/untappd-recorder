@@ -1,6 +1,6 @@
 # Untappd Recorder
 
-Untappd Recorder fetches your recent Untappd check-ins and saves the associated photos to a cloud storage bucket (e.g., AWS S3, Cloudflare R2). Crucially, it also embeds metadata such as comments, ratings, beer names, and brewery information directly into the photo files. It's designed to be run periodically to create a personal backup of your check-in history with rich metadata.
+Untappd Recorder fetches your recent Untappd check-ins and saves the associated photos (including WebP format) to a cloud storage bucket (e.g., AWS S3, Cloudflare R2). Crucially, it also embeds metadata such as comments, ratings, beer names, and brewery information directly into the photo files. It's designed to be run periodically to create a personal backup of your check-in history with rich metadata.
 
 The project consists of two main parts:
 - A recorder that fetches the latest check-ins.
