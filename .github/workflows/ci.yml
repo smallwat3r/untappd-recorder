@@ -18,8 +18,10 @@ jobs:
     - name: Install libvips with AVIF
       run: |
         sudo apt-get update
-        sudo apt-get install -y software-properties-common
-        sudo add-apt-repository -y ppa:libvips/libvips
+        sudo apt-get install -y curl gpg
+        curl -fsSL https://dl.lovell.info/apt/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/lovell-vips.gpg
+        echo "deb [signed-by=/usr/share/keyrings/lovell-vips.gpg] https://dl.lovell.info/apt/ubuntu $(lsb_release -sc) main" \
+          | sudo tee /etc/apt/sources.list.d/lovell-vips.list
         sudo apt-get update
         sudo apt-get install -y \
           libvips-dev \
