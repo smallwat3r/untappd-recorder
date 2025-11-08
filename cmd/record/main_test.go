@@ -12,9 +12,11 @@ import (
 type mockStorage struct {
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
-	UploadFunc                func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	UploadJPGFunc             func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
+	UploadWEBPFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	CheckinWEBPExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
 }
 
 func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
@@ -34,13 +36,24 @@ func (m *mockStorage) UpdateLatestCheckinID(
 	return nil
 }
 
-func (m *mockStorage) Upload(
+func (m *mockStorage) UploadJPG(
 	ctx context.Context,
 	file []byte,
 	metadata *storage.CheckinMetadata,
 ) error {
-	if m.UploadFunc != nil {
-		return m.UploadFunc(ctx, file, metadata)
+	if m.UploadJPGFunc != nil {
+		return m.UploadJPGFunc(ctx, file, metadata)
+	}
+	return nil
+}
+
+func (m *mockStorage) UploadWEBP(
+	ctx context.Context,
+	file []byte,
+	metadata *storage.CheckinMetadata,
+) error {
+	if m.UploadWEBPFunc != nil {
+		return m.UploadWEBPFunc(ctx, file, metadata)
 	}
 	return nil
 }
@@ -58,6 +71,16 @@ func (m *mockStorage) CheckinExists(
 ) (bool, error) {
 	if m.CheckinExistsFunc != nil {
 		return m.CheckinExistsFunc(ctx, checkinID, createdAt)
+	}
+	return false, nil
+}
+
+func (m *mockStorage) CheckinWEBPExists(
+	ctx context.Context,
+	checkinID, createdAt string,
+) (bool, error) {
+	if m.CheckinWEBPExistsFunc != nil {
+		return m.CheckinWEBPExistsFunc(ctx, checkinID, createdAt)
 	}
 	return false, nil
 }
@@ -89,6 +112,11 @@ type mockDownloader struct {
 		photoURL string,
 		metadata *storage.CheckinMetadata,
 	) error
+	DownloadAndSaveWEBPFunc func(
+		ctx context.Context,
+		store storage.Storage,
+		metadata *storage.CheckinMetadata,
+	) error
 }
 
 func (m *mockDownloader) DownloadAndSave(
@@ -100,6 +128,17 @@ func (m *mockDownloader) DownloadAndSave(
 ) error {
 	if m.DownloadAndSaveFunc != nil {
 		return m.DownloadAndSaveFunc(ctx, cfg, store, photoURL, metadata)
+	}
+	return nil
+}
+
+func (m *mockDownloader) DownloadAndSaveWEBP(
+	ctx context.Context,
+	store storage.Storage,
+	metadata *storage.CheckinMetadata,
+) error {
+	if m.DownloadAndSaveWEBPFunc != nil {
+		return m.DownloadAndSaveWEBPFunc(ctx, store, metadata)
 	}
 	return nil
 }

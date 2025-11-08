@@ -1,24 +1,28 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"context"
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
+	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func main() {
+	vips.Startup(nil)
+	defer vips.Shutdown()
+
 	csvPath := flag.String("csv", "", "path to a CSV file to backfill from")
 	flag.Parse()
 
@@ -152,8 +156,22 @@ func processCSVRecords(
 			log.Printf("failed checking exists(%d): %v", checkinID, err)
 			return
 		}
+
 		if exists {
-			log.Printf("checkin %d exists, skipping", checkinID)
+			webpExists, err := store.CheckinWEBPExists(ctx, csvRecord.CheckinID, csvRecord.CreatedAt)
+			if err != nil {
+				log.Printf("failed checking webp exists(%d): %v", checkinID, err)
+				return
+			}
+			if webpExists {
+				log.Printf("checkin %d webp exists, skipping", checkinID)
+				return
+			}
+
+			log.Printf("Backfilling WEBP for checkin %d", checkinID)
+			if err := saveWEBPFromJPG(ctx, store, cfg, csvRecord, downloader); err != nil {
+				log.Printf("failed to save webp(%d): %v", checkinID, err)
+			}
 			return
 		}
 
@@ -227,12 +245,13 @@ func formatFromAtHomeVenue(value, venue string) string {
 	return value
 }
 
-func saveCSVRecord(
+func saveRecord(
 	ctx context.Context,
 	store storage.Storage,
 	cfg *config.Config,
 	record *CSVRecord,
 	downloader photo.Downloader,
+	saveWEBP bool,
 ) error {
 	createdAt, err := time.Parse("2006-01-02 15:04:05", record.CreatedAt)
 	if err != nil {
@@ -256,5 +275,27 @@ func saveCSVRecord(
 		ABV:            record.BeerABV,
 	}
 
+	if saveWEBP {
+		return downloader.DownloadAndSaveWEBP(ctx, store, metadata)
+	}
 	return downloader.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
+}
+
+func saveCSVRecord(ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	record *CSVRecord,
+	downloader photo.Downloader,
+) error {
+	return saveRecord(ctx, store, cfg, record, downloader, false)
+}
+
+func saveWEBPFromJPG(
+	ctx context.Context,
+	store storage.Storage,
+	cfg *config.Config,
+	record *CSVRecord,
+	downloader photo.Downloader,
+) error {
+	return saveRecord(ctx, store, cfg, record, downloader, true)
 }

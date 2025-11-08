@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
+	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 )
@@ -18,6 +21,11 @@ type Downloader interface {
 		cfg *config.Config,
 		store storage.Storage,
 		photoURL string,
+		metadata *storage.CheckinMetadata,
+	) error
+	DownloadAndSaveWEBP(
+		ctx context.Context,
+		store storage.Storage,
 		metadata *storage.CheckinMetadata,
 	) error
 }
@@ -53,9 +61,47 @@ func (d *DefaultDownloader) DownloadAndSave(
 		return fmt.Errorf("failed to get photo: %w", err)
 	}
 
-	if err := store.Upload(ctx, b, metadata); err != nil {
+	if err := store.UploadJPG(ctx, b, metadata); err != nil {
 		return fmt.Errorf("failed to upload photo: %w", err)
 	}
+
+	return d.toWEBP(ctx, store, b, metadata)
+}
+
+func (d *DefaultDownloader) DownloadAndSaveWEBP(
+	ctx context.Context,
+	store storage.Storage,
+	metadata *storage.CheckinMetadata,
+) error {
+	// refetch the original JPG to perform the conversion
+	t, err := time.Parse(time.RFC1123Z, metadata.Date)
+	if err != nil {
+		return fmt.Errorf("parse checkin date %q: %w", metadata.Date, err)
+	}
+	key := path.Join(t.Format("2006/01/02"), fmt.Sprintf("%s.jpg", metadata.ID))
+	b, err := store.Download(ctx, key)
+	if err != nil {
+		return fmt.Errorf("failed to download photo from storage: %w", err)
+	}
+
+	return d.toWEBP(ctx, store, b, metadata)
+}
+
+func (d *DefaultDownloader) toWEBP(
+	ctx context.Context,
+	store storage.Storage,
+	b []byte,
+	metadata *storage.CheckinMetadata,
+) error {
+	webp, err := toWEBP(b)
+	if err != nil {
+		return fmt.Errorf("failed to convert to webp: %w", err)
+	}
+
+	if err := store.UploadWEBP(ctx, webp, metadata); err != nil {
+		return fmt.Errorf("failed to upload webp photo: %w", err)
+	}
+
 	return nil
 }
 
@@ -99,4 +145,23 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	}
 
 	return data, nil
+}
+
+func toWEBP(b []byte) ([]byte, error) {
+	img, err := vips.NewImageFromBuffer(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image from buffer: %w", err)
+	}
+	defer img.Close()
+
+	params := vips.NewWebpExportParams()
+	params.Quality = 75
+
+	webp, _, err := img.ExportWebp(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to export webp: %w", err)
+	}
+	log.Printf("converted to webp, size: %d", len(webp))
+
+	return webp, nil
 }
