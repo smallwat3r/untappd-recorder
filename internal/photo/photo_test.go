@@ -110,6 +110,9 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 	}
 
 	t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
+	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
+	t.Setenv("BUCKET_NAME", "test")
+	t.Setenv("NUM_WORKERS", "1")
 	cfg, _ := config.Load()
 
 	tests := []struct {
