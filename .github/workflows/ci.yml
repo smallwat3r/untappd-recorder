@@ -15,8 +15,17 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: 1.24
-    - name: Install libvips
-      run: sudo apt-get update && sudo apt-get install -y libvips-dev
+    - name: Install libvips with AVIF
+      run: |
+        sudo add-apt-repository ppa:tonimelisma/ppa -y
+        sudo apt-get update
+        sudo apt-get install -y \
+          libvips-dev \
+          libheif-dev \
+          libaom-dev \
+          libde265-dev
+    - name: Check vips formats
+      run: vips --list formats | grep heif || (vips --list formats; exit 1)
     - name: Build
       run: go build -v ./...
     - name: Test
