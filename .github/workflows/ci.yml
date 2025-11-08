@@ -17,6 +17,10 @@ jobs:
         go-version: 1.24
     - name: Install libvips
       run: sudo apt-get update && sudo apt-get install -y libvips-dev
+    - name: Install vipsgen and generate bindings
+      run: |
+        go install github.com/cshum/vipsgen/cmd/vipsgen@latest
+        cd internal && vipsgen
     - name: Build
       run: go build -v ./...
     - name: Test
