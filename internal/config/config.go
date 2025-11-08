@@ -11,7 +11,7 @@ type Config struct {
 	R2AccessKeySecret    string `env:"R2_SECRET_ACCESS_KEY"`
 	AWSRegion            string `env:"AWS_REGION"`
 	BucketName           string `env:"BUCKET_NAME,required"`
-	NumWorkers           int    `env:"NUM_WORKERS,required"          envDefault:"10"`
+	NumWorkers           int    `env:"NUM_WORKERS,required"          envDefault:"4"`
 	PlaceholderPhotoPath string `env:"PLACEHOLDER_PHOTO_PATH"        envDefault:"img/missing.jpg"`
 }
 
