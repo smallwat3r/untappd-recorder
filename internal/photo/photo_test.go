@@ -153,6 +153,11 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
 			t.Setenv("BUCKET_NAME", "test")
 			t.Setenv("NUM_WORKERS", "1")
+			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
+			t.Setenv("R2_ACCOUNT_ID", "test_account_id")
+			t.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
+			t.Setenv("R2_SECRET_ACCESS_KEY", "test_key_secret")
+			t.Setenv("BUCKET_NAME", "test_bucket_name")
 			cfg, err := config.Load()
 			if err != nil {
 				t.Fatalf("failed to load config: %v", err)
@@ -270,6 +275,11 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
 			t.Setenv("BUCKET_NAME", "test")
 			t.Setenv("NUM_WORKERS", "1")
+			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
+			t.Setenv("R2_ACCOUNT_ID", "test_account_id")
+			t.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
+			t.Setenv("R2_SECRET_ACCESS_KEY", "test_key_secret")
+			t.Setenv("BUCKET_NAME", "test_bucket_name")
 			_, err := config.Load()
 			if err != nil {
 				t.Fatalf("failed to load config: %v", err)
