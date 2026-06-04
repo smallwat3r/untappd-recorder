@@ -57,11 +57,6 @@ func (c *Client) handleResponse(
 		return 0, true, fmt.Errorf("API request failed with status: %s", resp.Status)
 	}
 
-	if resp.Header.Get("X-Ratelimit-Remaining") == "0" {
-		log.Println("untappd API rate limit reached. Stopping for now.")
-		return 0, true, nil
-	}
-
 	var untappdResp UntappdResponse
 	if err := json.NewDecoder(resp.Body).Decode(&untappdResp); err != nil {
 		return 0, true, fmt.Errorf("failed to decode response: %w", err)
@@ -78,6 +73,13 @@ func (c *Client) handleResponse(
 
 	if err := checkinProcessor(ctx, checkins); err != nil {
 		return 0, true, fmt.Errorf("failed to process checkins: %w", err)
+	}
+
+	// stop after processing this page once the rate limit is exhausted, so we
+	// don't drop the check-ins that were returned alongside the limit.
+	if resp.Header.Get("X-Ratelimit-Remaining") == "0" {
+		log.Println("untappd API rate limit reached. Stopping for now.")
+		return 0, true, nil
 	}
 
 	sinceURL := untappdResp.Response.Pagination.SinceURL
@@ -149,19 +151,7 @@ func (c *Client) FetchCheckins(
 	minID := sinceID
 
 	for {
-		req, err := c.buildRequest(ctx, endpoint, minID)
-		if err != nil {
-			return err
-		}
-
-		resp, err := c.client.Do(req)
-		if err != nil {
-			return err
-		}
-
-		defer resp.Body.Close()
-
-		newMinID, shouldBreak, err := c.handleResponse(ctx, resp, checkinProcessor)
+		newMinID, shouldBreak, err := c.fetchPage(ctx, endpoint, minID, checkinProcessor)
 		if err != nil {
 			return err
 		}
@@ -173,4 +163,26 @@ func (c *Client) FetchCheckins(
 	}
 
 	return nil
+}
+
+// fetchPage performs a single request and closes its response body before
+// returning, so bodies are not held open for the lifetime of the loop.
+func (c *Client) fetchPage(
+	ctx context.Context,
+	endpoint string,
+	minID uint64,
+	checkinProcessor func(context.Context, []Checkin) error,
+) (uint64, bool, error) {
+	req, err := c.buildRequest(ctx, endpoint, minID)
+	if err != nil {
+		return 0, true, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return 0, true, err
+	}
+	defer resp.Body.Close()
+
+	return c.handleResponse(ctx, resp, checkinProcessor)
 }

@@ -2,6 +2,9 @@ package storage
 
 import (
 	"context"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
@@ -64,7 +67,7 @@ type CheckinMetadata struct {
 }
 
 func (m *CheckinMetadata) ToMap() map[string]string {
-	return map[string]string{
+	out := map[string]string{
 		"id":              m.ID,
 		"beer":            m.Beer,
 		"brewery":         m.Brewery,
@@ -80,4 +83,65 @@ func (m *CheckinMetadata) ToMap() map[string]string {
 		"style":           m.Style,
 		"abv":             m.ABV,
 	}
+	for k, v := range out {
+		out[k] = sanitizeMetadataValue(v)
+	}
+	return out
+}
+
+// S3/R2 user metadata values must be single-line US-ASCII, and the total
+// metadata size is capped (~2KB). Beer names, breweries and comments can carry
+// accents, emoji or newlines, which would otherwise break the request signing
+// or get silently dropped. We collapse line breaks, strip other control
+// characters, cap the length, then percent-encode any non-ASCII byte so the
+// value stays header safe and reversible while ASCII text remains readable.
+const maxMetadataValueBytes = 512
+
+const upperHex = "0123456789ABCDEF"
+
+func sanitizeMetadataValue(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return ' '
+		case unicode.IsControl(r):
+			return -1
+		default:
+			return r
+		}
+	}, s)
+
+	s = strings.TrimSpace(s)
+	if len(s) > maxMetadataValueBytes {
+		s = truncateUTF8(s, maxMetadataValueBytes)
+	}
+
+	return percentEncode(s)
+}
+
+func truncateUTF8(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	s = s[:max]
+	// trim back to a valid UTF-8 boundary so we never split a rune.
+	for len(s) > 0 && !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+func percentEncode(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 0x20 && c <= 0x7e && c != '%' {
+			b.WriteByte(c)
+			continue
+		}
+		b.WriteByte('%')
+		b.WriteByte(upperHex[c>>4])
+		b.WriteByte(upperHex[c&0x0f])
+	}
+	return b.String()
 }

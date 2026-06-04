@@ -18,14 +18,21 @@ func newTestClient(cfg *config.Config, client *http.Client) *Client {
 }
 
 func TestFetchCheckins_RateLimit(t *testing.T) {
+	// a non-empty page that also reports the rate limit as exhausted: the
+	// check-ins must still be processed, then pagination must stop.
+	body := `{"response":{"checkins":{"items":[{"checkin_id":1}]},` +
+		`"pagination":{"since_url":"https://api.untappd.com/v4/user/checkins?min_id=5"}}}`
+
+	var requests int
 	mockClient := &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			requests++
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header: http.Header{
 					"X-RateLimit-Remaining": []string{"0"},
 				},
-				Body: io.NopCloser(strings.NewReader(`{"response":{"checkins":{"items":[]}}}`)),
+				Body: io.NopCloser(strings.NewReader(body)),
 			}, nil
 		}),
 	}
@@ -33,12 +40,12 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 	cfg := &config.Config{UntappdAccessToken: "test-token"}
 	client := newTestClient(cfg, mockClient)
 
-	processorCalled := false
+	var processorCalls int
 	err := client.FetchCheckins(
 		context.Background(),
-		0,
+		1,
 		func(ctx context.Context, checkins []Checkin) error {
-			processorCalled = true
+			processorCalls++
 			return nil
 		},
 	)
@@ -46,8 +53,11 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchCheckins returned error: %v", err)
 	}
-	if processorCalled {
-		t.Error("checkinProcessor should not be called when rate limit is reached")
+	if processorCalls != 1 {
+		t.Errorf("expected checkinProcessor to be called once, got %d", processorCalls)
+	}
+	if requests != 1 {
+		t.Errorf("expected to stop after one request when rate limited, got %d", requests)
 	}
 }
 
