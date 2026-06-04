@@ -38,3 +38,60 @@ func TestLoad(t *testing.T) {
 		}
 	})
 }
+
+func TestValidateProvider(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "complete R2 credentials",
+			cfg: Config{
+				R2AccountID:       "account",
+				R2AccessKeyID:     "key",
+				R2AccessKeySecret: "secret",
+			},
+		},
+		{
+			name: "AWS region only",
+			cfg:  Config{AWSRegion: "us-east-1"},
+		},
+		{
+			name: "R2 credentials and AWS region",
+			cfg: Config{
+				R2AccountID:       "account",
+				R2AccessKeyID:     "key",
+				R2AccessKeySecret: "secret",
+				AWSRegion:         "us-east-1",
+			},
+		},
+		{
+			name:    "incomplete R2 credentials",
+			cfg:     Config{R2AccountID: "account", R2AccessKeyID: "key"},
+			wantErr: true,
+		},
+		{
+			name:    "incomplete R2 credentials falls back to nothing",
+			cfg:     Config{R2AccountID: "account"},
+			wantErr: true,
+		},
+		{
+			name:    "no provider configured",
+			cfg:     Config{},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.validateProvider()
+			if tt.wantErr && err == nil {
+				t.Errorf("expected an error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error, got %v", err)
+			}
+		})
+	}
+}

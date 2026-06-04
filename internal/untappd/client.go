@@ -159,6 +159,13 @@ func (c *Client) FetchCheckins(
 			break
 		}
 
+		// min_id must strictly advance for pagination to make progress; if it
+		// ever stalls, stop rather than re-requesting the same page forever.
+		if newMinID <= minID {
+			log.Printf("min_id did not advance (%d -> %d), stopping", minID, newMinID)
+			break
+		}
+
 		minID = newMinID
 	}
 

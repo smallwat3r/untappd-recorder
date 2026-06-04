@@ -23,16 +23,19 @@ func TestFetchCheckins_RateLimit(t *testing.T) {
 	body := `{"response":{"checkins":{"items":[{"checkin_id":1}]},` +
 		`"pagination":{"since_url":"https://api.untappd.com/v4/user/checkins?min_id=5"}}}`
 
+	// build the header with Set so the key is canonicalized exactly as a real
+	// HTTP response would store it, matching the production Header.Get lookup.
+	header := http.Header{}
+	header.Set("X-Ratelimit-Remaining", "0")
+
 	var requests int
 	mockClient := &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 			requests++
 			return &http.Response{
 				StatusCode: http.StatusOK,
-				Header: http.Header{
-					"X-RateLimit-Remaining": []string{"0"},
-				},
-				Body: io.NopCloser(strings.NewReader(body)),
+				Header:     header,
+				Body:       io.NopCloser(strings.NewReader(body)),
 			}, nil
 		}),
 	}
