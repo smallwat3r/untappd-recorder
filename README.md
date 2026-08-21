@@ -22,6 +22,9 @@ Add the following environment variables to your service:
 UNTAPPD_ACCESS_TOKEN="your_untappd_api_token"
 BUCKET_NAME="your_bucket_name"
 
+# Optional: blur detected faces before photos are uploaded
+BLUR_FACES="true"
+
 # For Cloudflare R2:
 R2_ACCOUNT_ID="your_r2_account_id"
 R2_ACCESS_KEY_ID="your_r2_access_key_id"
@@ -54,6 +57,40 @@ To run the backfill script, use the following command:
 ```bash
 go run cmd/backfill/main.go -csv untappd_history.csv
 ```
+
+### Blurring Faces
+
+With `BLUR_FACES=true`, faces are detected with a YOLOv8-face model (embedded in the
+binary, running on ONNX Runtime) and gaussian-blurred before photos are uploaded. The
+Docker image ships the ONNX Runtime library; nothing extra is needed on Railway.
+
+To anonymise photos already stored in the bucket, run the one-off `blurfaces` command
+locally. It needs libvips and the ONNX Runtime shared library installed:
+
+```bash
+# Linux
+ORT_BASE=https://github.com/microsoft/onnxruntime/releases/download
+curl -sL "$ORT_BASE/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz" | sudo tar xz -C /opt
+export ONNXRUNTIME_LIB=/opt/onnxruntime-linux-x64-1.29.0/lib/libonnxruntime.so
+
+# macOS (found automatically in /opt/homebrew/lib)
+brew install onnxruntime
+```
+
+```bash
+go run ./cmd/blurfaces -dry-run   # report what would be blurred, with confidence scores
+go run ./cmd/blurfaces            # replace photos in place
+```
+
+Detection confidence ranges 0 to 1 (default cutoff 0.5). Tune it with
+`-min-quality`: raise it if non-faces get blurred, lower it if faces are missed.
+Once tuned, set `BLUR_MIN_QUALITY` on the recorder service so new checkins use
+the same cutoff. The `blurfaces` command only needs the bucket credentials,
+`UNTAPPD_ACCESS_TOKEN` is required by the recorder alone.
+
+It scans every photo in the bucket, and rewrites, in place, only those where faces are
+found (regenerating the WebP copy as well). Replacement is permanent, so run `-dry-run`
+first, or enable bucket versioning if you want a way back.
 
 ## Deployment
 

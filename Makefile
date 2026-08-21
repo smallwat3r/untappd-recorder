@@ -18,8 +18,10 @@ BIN_DIR=bin
 # Binary names
 APP_NAME_BACKFILL=backfill
 APP_NAME_RECORD=record
+APP_NAME_BLURFACES=blurfaces
 TARGET_BACKFILL=$(BIN_DIR)/$(APP_NAME_BACKFILL)
 TARGET_RECORD=$(BIN_DIR)/$(APP_NAME_RECORD)
+TARGET_BLURFACES=$(BIN_DIR)/$(APP_NAME_BLURFACES)
 
 .DEFAULT_GOAL := help
 
@@ -38,7 +40,7 @@ vipsgen: ## Generate vips bindings (version pinned by go.mod)
 	@cd internal && $(GOCMD) run github.com/cshum/vipsgen/cmd/vipsgen
 
 .PHONY: build
-build: vipsgen build-backfill build-record ## Build all Go applications
+build: vipsgen build-backfill build-record build-blurfaces ## Build all Go applications
 
 .PHONY: build-backfill
 build-backfill: ## Build the backfill Go application
@@ -47,6 +49,10 @@ build-backfill: ## Build the backfill Go application
 .PHONY: build-record
 build-record: ## Build the record Go application
 	$(GOBUILD) -o $(TARGET_RECORD) ./cmd/record
+
+.PHONY: build-blurfaces
+build-blurfaces: ## Build the blurfaces Go application
+	$(GOBUILD) -o $(TARGET_BLURFACES) ./cmd/blurfaces
 
 .PHONY: test
 test: ## Run the Go tests
@@ -65,11 +71,14 @@ tidy: ## Tidy the Go module dependencies
 fmt: ## Format Go source files
 	$(GOFMT) ./...
 
+# exclude the generated vips bindings from linting, we do not maintain them
+LINT_PKGS=$$($(GOCMD) list ./... | grep -v '/internal/vips')
+
 .PHONY: lint
 lint: ## Lint Go source files
-	$(GOVET) ./...
+	$(GOVET) $(LINT_PKGS)
 	@command -v staticcheck >/dev/null 2>&1 || (echo "Installing staticcheck..."; go install honnef.co/go/tools/cmd/staticcheck@latest)
-	@staticcheck ./...
+	@staticcheck $(LINT_PKGS)
 
 .PHONY: docker-build
 docker-build: ## Build Docker image for the application

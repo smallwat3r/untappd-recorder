@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
@@ -36,6 +37,20 @@ type mockS3Client struct {
 		params *s3.HeadObjectInput,
 		optFns ...func(*s3.Options),
 	) (*s3.HeadObjectOutput, error)
+
+	listObjectsV2 func(
+		ctx context.Context,
+		params *s3.ListObjectsV2Input,
+		optFns ...func(*s3.Options),
+	) (*s3.ListObjectsV2Output, error)
+}
+
+func (m *mockS3Client) ListObjectsV2(
+	ctx context.Context,
+	params *s3.ListObjectsV2Input,
+	optFns ...func(*s3.Options),
+) (*s3.ListObjectsV2Output, error) {
+	return m.listObjectsV2(ctx, params, optFns...)
 }
 
 func (m *mockS3Client) PutObject(
@@ -186,6 +201,52 @@ func TestClient_CheckinWEBPExists(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+}
+
+func TestClient_ListJPGKeys(t *testing.T) {
+	// two pages; only .jpg keys must be returned
+	pages := [][]string{
+		{"2019/08/18/1.jpg", "2019/08/18/WEBP/1.webp", "latest.jpg"},
+		{"2019/08/19/2.jpg"},
+	}
+
+	var call int
+	mockClient := &mockS3Client{
+		listObjectsV2: func(
+			ctx context.Context,
+			params *s3.ListObjectsV2Input,
+			optFns ...func(*s3.Options),
+		) (*s3.ListObjectsV2Output, error) {
+			page := pages[call]
+			call++
+
+			var contents []types.Object
+			for _, k := range page {
+				contents = append(contents, types.Object{Key: aws.String(k)})
+			}
+			truncated := call < len(pages)
+			return &s3.ListObjectsV2Output{
+				Contents:              contents,
+				IsTruncated:           aws.Bool(truncated),
+				NextContinuationToken: aws.String("next"),
+			}, nil
+		},
+	}
+
+	client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
+	keys, err := client.ListJPGKeys(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"2019/08/18/1.jpg", "latest.jpg", "2019/08/19/2.jpg"}, keys)
+}
+
+func TestWEBPSiblingKey(t *testing.T) {
+	assert.Equal(t, "2019/08/18/WEBP/111.webp", WEBPSiblingKey("2019/08/18/111.jpg"))
+	assert.Equal(t, "", WEBPSiblingKey("latest.jpg"))
+
+	// must stay consistent with CheckinKey's layout
+	d := time.Date(2019, 8, 18, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, CheckinKey(d, "111", "webp"), WEBPSiblingKey(CheckinKey(d, "111", "jpg")))
 }
 
 func TestNewClient_R2(t *testing.T) {

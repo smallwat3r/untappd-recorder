@@ -94,13 +94,21 @@ func (c *Client) upload(
 	md *CheckinMetadata,
 	ext, contentType string,
 ) error {
-	key := CheckinKey(md.Date, md.ID, ext)
+	return c.putObject(ctx, CheckinKey(md.Date, md.ID, ext), file, md.ToMap(), contentType)
+}
 
+func (c *Client) putObject(
+	ctx context.Context,
+	key string,
+	file []byte,
+	metadata map[string]string,
+	contentType string,
+) error {
 	_, err := c.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(c.bucketName),
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(file),
-		Metadata:    md.ToMap(),
+		Metadata:    metadata,
 		ContentType: aws.String(contentType),
 	})
 	if err != nil {
@@ -110,16 +118,70 @@ func (c *Client) upload(
 	return nil
 }
 
-func (c *Client) Download(ctx context.Context, fileName string) ([]byte, error) {
+// Replace overwrites an existing object in place, preserving the given
+// metadata (as returned by DownloadWithMetadata).
+func (c *Client) Replace(
+	ctx context.Context,
+	key string,
+	b []byte,
+	md map[string]string,
+	contentType string,
+) error {
+	return c.putObject(ctx, key, b, md, contentType)
+}
+
+// DownloadWithMetadata returns an object's bytes along with its user
+// metadata, so the object can be rewritten in place without losing it.
+func (c *Client) DownloadWithMetadata(
+	ctx context.Context,
+	key string,
+) ([]byte, map[string]string, error) {
 	output, err := c.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: &c.bucketName,
-		Key:    &fileName,
+		Key:    &key,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer output.Body.Close()
-	return io.ReadAll(output.Body)
+
+	b, err := io.ReadAll(output.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+	return b, output.Metadata, nil
+}
+
+// ListJPGKeys returns the keys of every .jpg object in the bucket.
+func (c *Client) ListJPGKeys(ctx context.Context) ([]string, error) {
+	var keys []string
+	var continuationToken *string
+
+	for {
+		out, err := c.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(c.bucketName),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list objects: %w", err)
+		}
+
+		for _, obj := range out.Contents {
+			if obj.Key != nil && strings.HasSuffix(*obj.Key, ".jpg") {
+				keys = append(keys, *obj.Key)
+			}
+		}
+
+		if out.IsTruncated == nil || !*out.IsTruncated {
+			return keys, nil
+		}
+		continuationToken = out.NextContinuationToken
+	}
+}
+
+func (c *Client) Download(ctx context.Context, fileName string) ([]byte, error) {
+	b, _, err := c.DownloadWithMetadata(ctx, fileName)
+	return b, err
 }
 
 const latestKey = "latest.jpg"
@@ -193,7 +255,10 @@ func (c *Client) CheckinWEBPExists(ctx context.Context, checkinID, createdAt str
 	return c.checkinExists(ctx, checkinID, createdAt, "webp")
 }
 
-func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt, ext string) (bool, error) {
+func (c *Client) checkinExists(
+	ctx context.Context,
+	checkinID, createdAt, ext string,
+) (bool, error) {
 	t, err := time.Parse("2006-01-02 15:04:05", createdAt)
 	if err != nil {
 		return false, fmt.Errorf("parse checkin date %q: %w", createdAt, err)

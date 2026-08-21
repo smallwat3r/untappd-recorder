@@ -17,14 +17,21 @@ jobs:
         go-version-file: go.mod
     - name: Install libvips
       run: sudo apt-get update && sudo apt-get install -y libvips-dev
+    - name: Install ONNX Runtime
+      run: |
+        ORT_BASE=https://github.com/microsoft/onnxruntime/releases/download
+        curl -sL -o /tmp/ort.tgz "$ORT_BASE/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz"
+        sudo mkdir -p /opt/ort && sudo tar xzf /tmp/ort.tgz -C /opt/ort --strip-components=1
+        echo "ONNXRUNTIME_LIB=/opt/ort/lib/libonnxruntime.so" >> "$GITHUB_ENV"
     - name: Generate vips bindings
       run: cd internal && go run github.com/cshum/vipsgen/cmd/vipsgen
     - name: Build
       run: go build -v ./...
     - name: Lint
       run: |
-        go vet ./...
+        # the generated vips bindings are excluded, we do not maintain them
+        go vet $(go list ./... | grep -v /internal/vips)
         go install honnef.co/go/tools/cmd/staticcheck@latest
-        staticcheck ./...
+        staticcheck $(go list ./... | grep -v /internal/vips)
     - name: Test
       run: go test -v ./...

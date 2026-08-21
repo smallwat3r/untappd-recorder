@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/smallwat3r/untappd-recorder/internal/faceblur"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/vips"
 )
@@ -28,14 +29,17 @@ type Downloader interface {
 	) error
 }
 
-type DefaultDownloader struct{}
+type DefaultDownloader struct {
+	blurFaces      bool
+	blurMinQuality float32
+}
 
 var httpClient = &http.Client{
 	Timeout: 15 * time.Second,
 }
 
-func NewDownloader() Downloader {
-	return &DefaultDownloader{}
+func NewDownloader(blurFaces bool, blurMinQuality float32) Downloader {
+	return &DefaultDownloader{blurFaces: blurFaces, blurMinQuality: blurMinQuality}
 }
 
 func (d *DefaultDownloader) DownloadAndSave(
@@ -57,6 +61,19 @@ func (d *DefaultDownloader) DownloadAndSave(
 	}
 	if err != nil {
 		return fmt.Errorf("failed to get photo: %w", err)
+	}
+
+	if d.blurFaces {
+		// fail closed: if blurring errors, skip the upload rather than
+		// storing a photo that should have been anonymised
+		blurred, n, err := faceblur.Blur(b, d.blurMinQuality)
+		if err != nil {
+			return fmt.Errorf("failed to blur faces: %w", err)
+		}
+		if n > 0 {
+			log.Printf("blurred %d face(s) in checkin %s", n, metadata.ID)
+			b = blurred
+		}
 	}
 
 	if err := store.UploadJPG(ctx, b, metadata); err != nil {
@@ -87,7 +104,7 @@ func (d *DefaultDownloader) toWEBP(
 	b []byte,
 	metadata *storage.CheckinMetadata,
 ) error {
-	webp, err := toWEBP(b)
+	webp, err := ToWEBP(b)
 	if err != nil {
 		return fmt.Errorf("failed to convert to webp: %w", err)
 	}
@@ -141,7 +158,9 @@ func (d *DefaultDownloader) downloadPhoto(ctx context.Context, urlStr string) ([
 	return data, nil
 }
 
-func toWEBP(b []byte) ([]byte, error) {
+// ToWEBP converts a JPG to WebP. Exported so the blurfaces command can
+// regenerate WebP siblings after rewriting a JPG.
+func ToWEBP(b []byte) ([]byte, error) {
 	img, err := vips.NewJpegloadBuffer(b, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create image from buffer: %w", err)

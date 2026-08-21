@@ -228,6 +228,64 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	}
 }
 
+func TestRunRecorder_FailedCheckinKeepsMarker(t *testing.T) {
+	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test-token")
+	t.Setenv("R2_ACCOUNT_ID", "test-account-id")
+	t.Setenv("R2_ACCESS_KEY_ID", "test-key-id")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "test-secret")
+	t.Setenv("BUCKET_NAME", "test-bucket")
+	t.Setenv("NUM_WORKERS", "1")
+
+	updateCalled := false
+	mockStore := &mockStorage{
+		UpdateLatestCheckinIDFunc: func(
+			ctx context.Context,
+			checkinID uint64,
+			createdAt time.Time,
+		) error {
+			updateCalled = true
+			return nil
+		},
+	}
+
+	failingDownloader := &mockDownloader{
+		DownloadAndSaveFunc: func(
+			ctx context.Context,
+			store storage.Storage,
+			photoURL string,
+			placeholderPath string,
+			metadata *storage.CheckinMetadata,
+		) error {
+			return context.DeadlineExceeded
+		},
+	}
+
+	mockUntappd := &mockUntappdClient{
+		FetchCheckinsFunc: func(
+			ctx context.Context,
+			sinceID uint64,
+			checkinProcessor func(context.Context, []untappd.Checkin) error,
+		) error {
+			return checkinProcessor(ctx, []untappd.Checkin{
+				{CheckinID: 54321, CreatedAt: "Sat, 01 Nov 2025 00:00:00 +0000"},
+			})
+		},
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+
+	err = runRecorder(context.Background(), mockStore, cfg, mockUntappd, failingDownloader)
+	if err == nil {
+		t.Error("expected an error when a checkin fails to save")
+	}
+	if updateCalled {
+		t.Error("latest checkin marker must not advance when a checkin failed")
+	}
+}
+
 func TestRun(t *testing.T) {
 	t.Setenv("UNTAPPD_ACCESS_TOKEN", "test-token")
 	t.Setenv("R2_ACCOUNT_ID", "test-account-id")

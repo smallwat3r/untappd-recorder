@@ -52,7 +52,7 @@ func run(
 	}
 
 	if downloader == nil {
-		downloader = photo.NewDownloader()
+		downloader = photo.NewDownloader(cfg.BlurFaces, float32(cfg.BlurMinQuality))
 	}
 
 	log.Printf("Starting backfill from %s\n", csvPath)

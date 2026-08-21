@@ -41,7 +41,7 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("should return error when an env var is missing", func(t *testing.T) {
-		os.Unsetenv("UNTAPPD_ACCESS_TOKEN")
+		os.Unsetenv("BUCKET_NAME")
 
 		_, err := Load()
 		if err == nil {

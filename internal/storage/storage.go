@@ -33,6 +33,11 @@ type S3Client interface {
 		params *s3.GetObjectInput,
 		optFns ...func(*s3.Options),
 	) (*s3.GetObjectOutput, error)
+	ListObjectsV2(
+		ctx context.Context,
+		params *s3.ListObjectsV2Input,
+		optFns ...func(*s3.Options),
+	) (*s3.ListObjectsV2Output, error)
 	HeadObject(
 		ctx context.Context,
 		params *s3.HeadObjectInput,
@@ -53,6 +58,17 @@ func CheckinKey(t time.Time, id, ext string) string {
 		dir = path.Join(dir, "WEBP")
 	}
 	return path.Join(dir, fmt.Sprintf("%s.%s", id, ext))
+}
+
+// WEBPSiblingKey maps a JPG key to its WebP sibling, mirroring CheckinKey's
+// layout (YYYY/MM/DD/id.jpg -> YYYY/MM/DD/WEBP/id.webp). Keys without a
+// date directory (latest.jpg) have no sibling and map to "".
+func WEBPSiblingKey(key string) string {
+	dir, file := path.Split(key)
+	if dir == "" {
+		return ""
+	}
+	return path.Join(dir, "WEBP", strings.TrimSuffix(file, ".jpg")+".webp")
 }
 
 // holds the metadata for a checkin photo

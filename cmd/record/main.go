@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/smallwat3r/untappd-recorder/internal/config"
@@ -27,6 +27,9 @@ func run(ctx context.Context, store storage.Storage, untappdClient untappd.Untap
 	if err != nil {
 		return fmt.Errorf("error loading configuration: %w", err)
 	}
+	if cfg.UntappdAccessToken == "" {
+		return fmt.Errorf("UNTAPPD_ACCESS_TOKEN must be set")
+	}
 
 	if store == nil {
 		s, err := storage.NewClient(ctx, cfg)
@@ -40,7 +43,7 @@ func run(ctx context.Context, store storage.Storage, untappdClient untappd.Untap
 		untappdClient = untappd.NewClient(cfg)
 	}
 
-	downloader := photo.NewDownloader()
+	downloader := photo.NewDownloader(cfg.BlurFaces, float32(cfg.BlurMinQuality))
 
 	return runRecorder(ctx, store, cfg, untappdClient, downloader)
 }
@@ -57,18 +60,10 @@ func runRecorder(
 		return fmt.Errorf("failed to get latest checkin ID: %w", err)
 	}
 
-	proc := newCheckinProcessor(store, cfg, downloader)
-	return untappdClient.FetchCheckins(ctx, latestCheckinID, proc)
-}
+	var newest *untappd.Checkin
+	var failed int64
 
-func newCheckinProcessor(
-	store storage.Storage,
-	cfg *config.Config,
-	downloader photo.Downloader,
-) func(context.Context, []untappd.Checkin) error {
-	var once sync.Once
-
-	return func(ctx context.Context, checkins []untappd.Checkin) error {
+	proc := func(ctx context.Context, checkins []untappd.Checkin) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -79,16 +74,33 @@ func newCheckinProcessor(
 		}
 
 		log.Printf("Processing %d checkins\n", len(checkins))
-		processCheckins(ctx, store, cfg, checkins, downloader)
+		failed += processCheckins(ctx, store, cfg, checkins, downloader)
 
-		// first element should be newest, update once per FetchCheckins cycle
-		once.Do(func() {
-			if err := updateLatestCheckinID(ctx, store, checkins[0]); err != nil {
-				log.Printf("failed to update latest checkin ID: %v\n", err)
-			}
-		})
+		if newest == nil {
+			// first element of the first page is the newest checkin
+			c := checkins[0]
+			newest = &c
+		}
 		return nil
 	}
+
+	if err := untappdClient.FetchCheckins(ctx, latestCheckinID, proc); err != nil {
+		return err
+	}
+
+	if newest == nil {
+		return nil
+	}
+
+	// only advance the marker when every checkin saved, so failed ones are
+	// retried on the next run instead of being skipped forever
+	if failed > 0 {
+		return fmt.Errorf(
+			"%d checkins failed, keeping latest checkin marker at %d so they are retried",
+			failed, latestCheckinID,
+		)
+	}
+	return updateLatestCheckinID(ctx, store, *newest)
 }
 
 func updateLatestCheckinID(
@@ -111,22 +123,27 @@ func parseCreatedAt(s string) (time.Time, error) {
 	return t, nil
 }
 
+// processCheckins saves the checkins concurrently and returns how many
+// failed.
 func processCheckins(
 	ctx context.Context,
 	store storage.Storage,
 	cfg *config.Config,
 	checkins []untappd.Checkin,
 	downloader photo.Downloader,
-) {
+) int64 {
+	var failed atomic.Int64
 	processor.Process(ctx, checkins, cfg.NumWorkers, func(
 		ctx context.Context,
 		c untappd.Checkin,
 	) {
 		log.Printf("Processing checkin %d", c.CheckinID)
 		if err := saveCheckin(ctx, store, cfg, c, downloader); err != nil {
+			failed.Add(1)
 			log.Printf("failed to save checkin %d: %v", c.CheckinID, err)
 		}
 	})
+	return failed.Load()
 }
 
 func saveCheckin(

@@ -1,6 +1,6 @@
 module github.com/smallwat3r/untappd-recorder
 
-go 1.24.9
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.5
@@ -10,6 +10,8 @@ require (
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/cshum/vipsgen v1.2.1
 	github.com/stretchr/testify v1.10.0
+	github.com/yalue/onnxruntime_go v1.35.0
+	golang.org/x/image v0.45.0
 	golang.org/x/sync v0.17.0
 )
 

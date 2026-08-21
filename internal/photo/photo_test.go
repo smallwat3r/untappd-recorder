@@ -149,7 +149,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			)
 			defer server.Close()
 
-			downloader := NewDownloader()
+			downloader := NewDownloader(false, 0.5)
 			metadata := &storage.CheckinMetadata{
 				ID:   "123",
 				Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
@@ -248,7 +248,7 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			downloader := NewDownloader()
+			downloader := NewDownloader(false, 0.5)
 			metadata := &storage.CheckinMetadata{
 				ID:   "123",
 				Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),

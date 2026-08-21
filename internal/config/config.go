@@ -7,14 +7,17 @@ import (
 )
 
 type Config struct {
-	UntappdAccessToken   string `env:"UNTAPPD_ACCESS_TOKEN,required"`
-	R2AccountID          string `env:"R2_ACCOUNT_ID"`
-	R2AccessKeyID        string `env:"R2_ACCESS_KEY_ID"`
-	R2AccessKeySecret    string `env:"R2_SECRET_ACCESS_KEY"`
-	AWSRegion            string `env:"AWS_REGION"`
-	BucketName           string `env:"BUCKET_NAME,required"`
-	NumWorkers           int    `env:"NUM_WORKERS"                   envDefault:"4"`
-	PlaceholderPhotoPath string `env:"PLACEHOLDER_PHOTO_PATH"        envDefault:"img/missing.jpg"`
+	// only required by the record command, which calls the Untappd API
+	UntappdAccessToken   string  `env:"UNTAPPD_ACCESS_TOKEN"`
+	R2AccountID          string  `env:"R2_ACCOUNT_ID"`
+	R2AccessKeyID        string  `env:"R2_ACCESS_KEY_ID"`
+	R2AccessKeySecret    string  `env:"R2_SECRET_ACCESS_KEY"`
+	AWSRegion            string  `env:"AWS_REGION"`
+	BucketName           string  `env:"BUCKET_NAME,required"`
+	NumWorkers           int     `env:"NUM_WORKERS"            envDefault:"4"`
+	PlaceholderPhotoPath string  `env:"PLACEHOLDER_PHOTO_PATH" envDefault:"img/missing.jpg"`
+	BlurFaces            bool    `env:"BLUR_FACES"             envDefault:"false"`
+	BlurMinQuality       float64 `env:"BLUR_MIN_QUALITY"       envDefault:"0.5"`
 }
 
 func Load() (*Config, error) {
@@ -24,6 +27,11 @@ func Load() (*Config, error) {
 	}
 	if cfg.NumWorkers <= 0 {
 		return nil, fmt.Errorf("NUM_WORKERS must be a positive integer, got %d", cfg.NumWorkers)
+	}
+	if cfg.BlurMinQuality < 0 || cfg.BlurMinQuality > 1 {
+		return nil, fmt.Errorf(
+			"BLUR_MIN_QUALITY must be between 0 and 1, got %g", cfg.BlurMinQuality,
+		)
 	}
 	if err := cfg.validateProvider(); err != nil {
 		return nil, err
