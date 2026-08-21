@@ -18,7 +18,6 @@ func Process[T any](
 	}
 
 	for _, item := range items {
-		item := item // capture
 		g.Go(func() error {
 			select {
 			case <-ctx.Done():

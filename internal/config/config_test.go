@@ -29,6 +29,17 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("should return error when NUM_WORKERS is not positive", func(t *testing.T) {
+		os.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
+		os.Setenv("NUM_WORKERS", "0")
+		defer os.Unsetenv("NUM_WORKERS")
+
+		_, err := Load()
+		if err == nil {
+			t.Errorf("expected an error, got nil")
+		}
+	})
+
 	t.Run("should return error when an env var is missing", func(t *testing.T) {
 		os.Unsetenv("UNTAPPD_ACCESS_TOKEN")
 

@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"strconv"
-	"sync"
 )
 
 func main() {
@@ -82,12 +83,32 @@ func newCheckinProcessor(
 
 		// first element should be newest, update once per FetchCheckins cycle
 		once.Do(func() {
-			if err := store.UpdateLatestCheckinID(ctx, checkins[0]); err != nil {
+			if err := updateLatestCheckinID(ctx, store, checkins[0]); err != nil {
 				log.Printf("failed to update latest checkin ID: %v\n", err)
 			}
 		})
 		return nil
 	}
+}
+
+func updateLatestCheckinID(
+	ctx context.Context,
+	store storage.Storage,
+	checkin untappd.Checkin,
+) error {
+	createdAt, err := parseCreatedAt(checkin.CreatedAt)
+	if err != nil {
+		return err
+	}
+	return store.UpdateLatestCheckinID(ctx, checkin.CheckinID, createdAt)
+}
+
+func parseCreatedAt(s string) (time.Time, error) {
+	t, err := time.Parse(time.RFC1123Z, s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse checkin date %q: %w", s, err)
+	}
+	return t, nil
 }
 
 func processCheckins(
@@ -115,6 +136,11 @@ func saveCheckin(
 	checkin untappd.Checkin,
 	downloader photo.Downloader,
 ) error {
+	createdAt, err := parseCreatedAt(checkin.CreatedAt)
+	if err != nil {
+		return err
+	}
+
 	photoURL := ""
 	if len(checkin.Media.Items) > 0 {
 		photoURL = checkin.Media.Items[0].Photo.PhotoImgOg
@@ -132,10 +158,10 @@ func saveCheckin(
 		State:          checkin.Venue.State(),
 		Country:        checkin.Venue.Country(),
 		LatLng:         checkin.Venue.LatLng(),
-		Date:           checkin.CreatedAt,
+		Date:           createdAt,
 		Style:          checkin.Beer.BeerStyle,
 		ABV:            fmt.Sprintf("%.2f", checkin.Beer.BeerABV),
 	}
 
-	return downloader.DownloadAndSave(ctx, cfg, store, photoURL, metadata)
+	return downloader.DownloadAndSave(ctx, store, photoURL, cfg.PlaceholderPhotoPath, metadata)
 }

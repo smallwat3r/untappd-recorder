@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -35,12 +36,6 @@ type mockS3Client struct {
 		params *s3.HeadObjectInput,
 		optFns ...func(*s3.Options),
 	) (*s3.HeadObjectOutput, error)
-
-	listObjectsV2 func(
-		ctx context.Context,
-		params *s3.ListObjectsV2Input,
-		optFns ...func(*s3.Options),
-	) (*s3.ListObjectsV2Output, error)
 }
 
 func (m *mockS3Client) PutObject(
@@ -65,14 +60,6 @@ func (m *mockS3Client) CopyObject(
 	optFns ...func(*s3.Options),
 ) (*s3.CopyObjectOutput, error) {
 	return m.copyObject(ctx, params, optFns...)
-}
-
-func (m *mockS3Client) ListObjectsV2(
-	ctx context.Context,
-	params *s3.ListObjectsV2Input,
-	optFns ...func(*s3.Options),
-) (*s3.ListObjectsV2Output, error) {
-	return m.listObjectsV2(ctx, params, optFns...)
 }
 
 func (m *mockS3Client) HeadObject(
@@ -113,7 +100,7 @@ func TestClient_UploadJPG(t *testing.T) {
 
 	metadata := &CheckinMetadata{
 		ID:   "123",
-		Date: "Sat, 01 Nov 2025 00:00:00 +0000",
+		Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
 	}
 	err := client.UploadJPG(context.Background(), []byte("test"), metadata)
 	if err != nil {
@@ -137,7 +124,10 @@ func TestClient_UploadWEBP(t *testing.T) {
 	}
 
 	client := &Client{s3Client: mockClient, bucketName: "test-bucket"}
-	metadata := &CheckinMetadata{ID: "123", Date: "Sat, 01 Nov 2025 00:00:00 +0000"}
+	metadata := &CheckinMetadata{
+		ID:   "123",
+		Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+	}
 
 	err := client.UploadWEBP(context.Background(), []byte("webp-data"), metadata)
 	assert.NoError(t, err)

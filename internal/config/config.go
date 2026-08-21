@@ -13,7 +13,7 @@ type Config struct {
 	R2AccessKeySecret    string `env:"R2_SECRET_ACCESS_KEY"`
 	AWSRegion            string `env:"AWS_REGION"`
 	BucketName           string `env:"BUCKET_NAME,required"`
-	NumWorkers           int    `env:"NUM_WORKERS,required"          envDefault:"4"`
+	NumWorkers           int    `env:"NUM_WORKERS"                   envDefault:"4"`
 	PlaceholderPhotoPath string `env:"PLACEHOLDER_PHOTO_PATH"        envDefault:"img/missing.jpg"`
 }
 
@@ -21,6 +21,9 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
 		return nil, err
+	}
+	if cfg.NumWorkers <= 0 {
+		return nil, fmt.Errorf("NUM_WORKERS must be a positive integer, got %d", cfg.NumWorkers)
 	}
 	if err := cfg.validateProvider(); err != nil {
 		return nil, err

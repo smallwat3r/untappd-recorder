@@ -1,21 +1,21 @@
 package main
 
 import (
-	"log"
-	"os"
-
 	"context"
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/processor"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/untappd"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func main() {
@@ -59,39 +59,24 @@ func run(
 	return runBackfill(ctx, csvPath, store, cfg, downloader)
 }
 
-// matches the structure of the Untappd CSV export.
+// the columns of the Untappd CSV export that we actually use.
 type CSVRecord struct {
-	BeerName                  string
-	BreweryName               string
-	BeerType                  string
-	BeerABV                   string
-	BeerIBU                   string
-	Comment                   string
-	VenueName                 string
-	VenueCity                 string
-	VenueState                string
-	VenueCountry              string
-	VenueLat                  string
-	VenueLng                  string
-	RatingScore               string
-	CreatedAt                 string
-	CheckinURL                string
-	BeerURL                   string
-	BreweryURL                string
-	BreweryCountry            string
-	BreweryCity               string
-	BreweryState              string
-	FlavorProfiles            string
-	PurchaseVenue             string
-	CheckinID                 string
-	BID                       string
-	BreweryID                 string
-	PhotoURL                  string
-	GlobalRatingScore         string
-	GlobalWeightedRatingScore string
-	TaggedFriends             string
-	TotalToasts               string
-	TotalComments             string
+	BeerName       string
+	BreweryName    string
+	BeerType       string
+	BeerABV        string
+	Comment        string
+	VenueName      string
+	VenueCity      string
+	VenueState     string
+	VenueCountry   string
+	VenueLat       string
+	VenueLng       string
+	RatingScore    string
+	CreatedAt      string
+	BreweryCountry string
+	CheckinID      string
+	PhotoURL       string
 }
 
 func runBackfill(
@@ -193,37 +178,22 @@ func recordToCSVRecord(record []string, header []string) (*CSVRecord, error) {
 	}
 
 	return &CSVRecord{
-		BeerName:                  recordMap["beer_name"],
-		BreweryName:               recordMap["brewery_name"],
-		BeerType:                  recordMap["beer_type"],
-		BeerABV:                   recordMap["beer_abv"],
-		BeerIBU:                   recordMap["beer_ibu"],
-		Comment:                   recordMap["comment"],
-		VenueName:                 recordMap["venue_name"],
-		VenueCity:                 recordMap["venue_city"],
-		VenueState:                recordMap["venue_state"],
-		VenueCountry:              recordMap["venue_country"],
-		VenueLat:                  recordMap["venue_lat"],
-		VenueLng:                  recordMap["venue_lng"],
-		RatingScore:               recordMap["rating_score"],
-		CreatedAt:                 recordMap["created_at"],
-		CheckinURL:                recordMap["checkin_url"],
-		BeerURL:                   recordMap["beer_url"],
-		BreweryURL:                recordMap["brewery_url"],
-		BreweryCountry:            recordMap["brewery_country"],
-		BreweryCity:               recordMap["brewery_city"],
-		BreweryState:              recordMap["brewery_state"],
-		FlavorProfiles:            recordMap["flavor_profiles"],
-		PurchaseVenue:             recordMap["purchase_venue"],
-		CheckinID:                 recordMap["checkin_id"],
-		BID:                       recordMap["bid"],
-		BreweryID:                 recordMap["brewery_id"],
-		PhotoURL:                  recordMap["photo_url"],
-		GlobalRatingScore:         recordMap["global_rating_score"],
-		GlobalWeightedRatingScore: recordMap["global_weighted_rating_score"],
-		TaggedFriends:             recordMap["tagged_friends"],
-		TotalToasts:               recordMap["total_toasts"],
-		TotalComments:             recordMap["total_comments"],
+		BeerName:       recordMap["beer_name"],
+		BreweryName:    recordMap["brewery_name"],
+		BeerType:       recordMap["beer_type"],
+		BeerABV:        recordMap["beer_abv"],
+		Comment:        recordMap["comment"],
+		VenueName:      recordMap["venue_name"],
+		VenueCity:      recordMap["venue_city"],
+		VenueState:     recordMap["venue_state"],
+		VenueCountry:   recordMap["venue_country"],
+		VenueLat:       recordMap["venue_lat"],
+		VenueLng:       recordMap["venue_lng"],
+		RatingScore:    recordMap["rating_score"],
+		CreatedAt:      recordMap["created_at"],
+		BreweryCountry: recordMap["brewery_country"],
+		CheckinID:      recordMap["checkin_id"],
+		PhotoURL:       recordMap["photo_url"],
 	}, nil
 }
 
@@ -232,13 +202,6 @@ func formatLatLng(record *CSVRecord) string {
 		return ""
 	}
 	return fmt.Sprintf("%s,%s", record.VenueLat, record.VenueLng)
-}
-
-func formatFromAtHomeVenue(value, venue string) string {
-	if venue == untappd.VenueUntappdAtHome {
-		return ""
-	}
-	return value
 }
 
 func saveRecord(
@@ -262,11 +225,11 @@ func saveRecord(
 		Comment:        record.Comment,
 		Rating:         record.RatingScore,
 		Venue:          record.VenueName,
-		City:           formatFromAtHomeVenue(record.VenueCity, record.VenueName),
-		State:          formatFromAtHomeVenue(record.VenueState, record.VenueName),
-		Country:        formatFromAtHomeVenue(record.VenueCountry, record.VenueName),
-		LatLng:         formatFromAtHomeVenue(formatLatLng(record), record.VenueName),
-		Date:           createdAt.Format(time.RFC1123Z),
+		City:           untappd.BlankIfAtHome(record.VenueCity, record.VenueName),
+		State:          untappd.BlankIfAtHome(record.VenueState, record.VenueName),
+		Country:        untappd.BlankIfAtHome(record.VenueCountry, record.VenueName),
+		LatLng:         untappd.BlankIfAtHome(formatLatLng(record), record.VenueName),
+		Date:           createdAt,
 		Style:          record.BeerType,
 		ABV:            record.BeerABV,
 	}
@@ -274,7 +237,13 @@ func saveRecord(
 	if saveWEBP {
 		return downloader.DownloadAndSaveWEBP(ctx, store, metadata)
 	}
-	return downloader.DownloadAndSave(ctx, cfg, store, record.PhotoURL, metadata)
+	return downloader.DownloadAndSave(
+		ctx,
+		store,
+		record.PhotoURL,
+		cfg.PlaceholderPhotoPath,
+		metadata,
+	)
 }
 
 func saveCSVRecord(ctx context.Context,

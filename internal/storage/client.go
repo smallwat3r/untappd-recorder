@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallwat3r/untappd-recorder/internal/config"
-	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type Client struct {
@@ -41,20 +39,8 @@ func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
 func newR2Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 	endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2AccountID)
 
-	r2Resolver := aws.EndpointResolverWithOptionsFunc(
-		func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL:               endpoint,
-				HostnameImmutable: true,
-				SigningRegion:     "auto",
-				SigningName:       "s3",
-			}, nil
-		},
-	)
-
 	awsCfg, err := awsconfig.LoadDefaultConfig(
 		ctx,
-		awsconfig.WithEndpointResolverWithOptions(r2Resolver),
 		awsconfig.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(
 				cfg.R2AccessKeyID,
@@ -69,6 +55,7 @@ func newR2Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 	}
 
 	s3c := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(endpoint)
 		o.UsePathStyle = true
 	})
 
@@ -94,50 +81,27 @@ func newS3Client(ctx context.Context, cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) UploadJPG(ctx context.Context, file []byte, md *CheckinMetadata) error {
-	t, err := time.Parse(time.RFC1123Z, md.Date)
-	if err != nil {
-		return fmt.Errorf("parse checkin date %q: %w", md.Date, err)
-	}
-
-	// YYYY/MM/DD/id.jpg
-	key := path.Join(
-		t.Format("2006/01/02"),
-		fmt.Sprintf("%s.jpg", md.ID),
-	)
-
-	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(c.bucketName),
-		Key:         aws.String(key),
-		Body:        bytes.NewReader(file),
-		Metadata:    md.ToMap(),
-		ContentType: aws.String("image/jpeg"),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload object %q: %w", key, err)
-	}
-
-	return nil
+	return c.upload(ctx, file, md, "jpg", "image/jpeg")
 }
 
 func (c *Client) UploadWEBP(ctx context.Context, file []byte, md *CheckinMetadata) error {
-	t, err := time.Parse(time.RFC1123Z, md.Date)
-	if err != nil {
-		return fmt.Errorf("parse checkin date %q: %w", md.Date, err)
-	}
+	return c.upload(ctx, file, md, "webp", "image/webp")
+}
 
-	// YYYY/MM/DD/WEBP/id.webp
-	key := path.Join(
-		t.Format("2006/01/02"),
-		"WEBP",
-		fmt.Sprintf("%s.webp", md.ID),
-	)
+func (c *Client) upload(
+	ctx context.Context,
+	file []byte,
+	md *CheckinMetadata,
+	ext, contentType string,
+) error {
+	key := CheckinKey(md.Date, md.ID, ext)
 
-	_, err = c.s3Client.PutObject(ctx, &s3.PutObjectInput{
+	_, err := c.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(c.bucketName),
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(file),
 		Metadata:    md.ToMap(),
-		ContentType: aws.String("image/webp"),
+		ContentType: aws.String(contentType),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload object %q: %w", key, err)
@@ -158,33 +122,7 @@ func (c *Client) Download(ctx context.Context, fileName string) ([]byte, error) 
 	return io.ReadAll(output.Body)
 }
 
-func (c *Client) HeadObject(
-	ctx context.Context,
-	params *s3.HeadObjectInput,
-	optFns ...func(*s3.Options),
-) (*s3.HeadObjectOutput, error) {
-	return c.s3Client.HeadObject(ctx, params, optFns...)
-}
-
-func (c *Client) ListObjectsV2(
-	ctx context.Context,
-	params *s3.ListObjectsV2Input,
-	optFns ...func(*s3.Options),
-) (*s3.ListObjectsV2Output, error) {
-	return c.s3Client.ListObjectsV2(ctx, params, optFns...)
-}
-
-func (c *Client) CopyObject(
-	ctx context.Context,
-	params *s3.CopyObjectInput,
-	optFns ...func(*s3.Options),
-) (*s3.CopyObjectOutput, error) {
-	return c.s3Client.CopyObject(ctx, params, optFns...)
-}
-
-const (
-	latestKey = "latest.jpg"
-)
+const latestKey = "latest.jpg"
 
 func (c *Client) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	const metaKeyID = "id"
@@ -221,25 +159,22 @@ func (c *Client) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	return id, nil
 }
 
-func (c *Client) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
-	t, err := time.Parse(time.RFC1123Z, checkin.CreatedAt)
-	if err != nil {
-		return fmt.Errorf("failed to parse checkin date %q: %w", checkin.CreatedAt, err)
-	}
-
-	dir := t.Format("2006/01/02")
-	key := path.Join(dir, fmt.Sprintf("%d.jpg", checkin.CheckinID))
-
+func (c *Client) UpdateLatestCheckinID(
+	ctx context.Context,
+	checkinID uint64,
+	createdAt time.Time,
+) error {
+	key := CheckinKey(createdAt, strconv.FormatUint(checkinID, 10), "jpg")
 	copySource := c.bucketName + "/" + url.PathEscape(key)
 
-	_, err = c.s3Client.CopyObject(ctx, &s3.CopyObjectInput{
+	_, err := c.s3Client.CopyObject(ctx, &s3.CopyObjectInput{
 		Bucket:            aws.String(c.bucketName),
 		Key:               aws.String(latestKey),
 		CopySource:        aws.String(copySource),
 		MetadataDirective: types.MetadataDirectiveReplace,
 		Metadata: map[string]string{
-			"id":         strconv.FormatUint(checkin.CheckinID, 10),
-			"created_at": t.Format(time.RFC3339),
+			"id":         strconv.FormatUint(checkinID, 10),
+			"created_at": createdAt.Format(time.RFC3339),
 		},
 		ContentType: aws.String("image/jpeg"),
 	})
@@ -258,28 +193,13 @@ func (c *Client) CheckinWEBPExists(ctx context.Context, checkinID, createdAt str
 	return c.checkinExists(ctx, checkinID, createdAt, "webp")
 }
 
-func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt string, format string) (bool, error) {
+func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt, ext string) (bool, error) {
 	t, err := time.Parse("2006-01-02 15:04:05", createdAt)
 	if err != nil {
 		return false, fmt.Errorf("parse checkin date %q: %w", createdAt, err)
 	}
 
-	var key string
-	switch format {
-	case "webp":
-		// YYYY/MM/DD/WEBP/id.webp
-		key = path.Join(
-			t.Format("2006/01/02"),
-			"WEBP",
-			fmt.Sprintf("%s.webp", checkinID),
-		)
-	default:
-		// YYYY/MM/DD/id.jpg
-		key = path.Join(
-			t.Format("2006/01/02"),
-			fmt.Sprintf("%s.jpg", checkinID),
-		)
-	}
+	key := CheckinKey(t, checkinID, ext)
 
 	_, err = c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(c.bucketName),
@@ -288,7 +208,7 @@ func (c *Client) checkinExists(ctx context.Context, checkinID, createdAt string,
 	if err != nil {
 		var nfe *types.NotFound
 		if errors.As(err, &nfe) {
-			// object does not exists
+			// object does not exist
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to head %q: %w", key, err)

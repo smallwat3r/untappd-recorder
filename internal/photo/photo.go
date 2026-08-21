@@ -7,10 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"time"
 
-	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
 	"github.com/smallwat3r/untappd-recorder/internal/vips"
 )
@@ -18,9 +16,9 @@ import (
 type Downloader interface {
 	DownloadAndSave(
 		ctx context.Context,
-		cfg *config.Config,
 		store storage.Storage,
 		photoURL string,
+		placeholderPath string,
 		metadata *storage.CheckinMetadata,
 	) error
 	DownloadAndSaveWEBP(
@@ -42,9 +40,9 @@ func NewDownloader() Downloader {
 
 func (d *DefaultDownloader) DownloadAndSave(
 	ctx context.Context,
-	cfg *config.Config,
 	store storage.Storage,
 	photoURL string,
+	placeholderPath string,
 	metadata *storage.CheckinMetadata,
 ) error {
 	var (
@@ -53,7 +51,7 @@ func (d *DefaultDownloader) DownloadAndSave(
 	)
 
 	if photoURL == "" {
-		b, err = usePlaceholderPhoto(cfg.PlaceholderPhotoPath)
+		b, err = usePlaceholderPhoto(placeholderPath)
 	} else {
 		b, err = d.downloadPhoto(ctx, photoURL)
 	}
@@ -74,11 +72,7 @@ func (d *DefaultDownloader) DownloadAndSaveWEBP(
 	metadata *storage.CheckinMetadata,
 ) error {
 	// refetch the original JPG to perform the conversion
-	t, err := time.Parse(time.RFC1123Z, metadata.Date)
-	if err != nil {
-		return fmt.Errorf("parse checkin date %q: %w", metadata.Date, err)
-	}
-	key := path.Join(t.Format("2006/01/02"), fmt.Sprintf("%s.jpg", metadata.ID))
+	key := storage.CheckinKey(metadata.Date, metadata.ID, "jpg")
 	b, err := store.Download(ctx, key)
 	if err != nil {
 		return fmt.Errorf("failed to download photo from storage: %w", err)

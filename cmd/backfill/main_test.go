@@ -5,11 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
-	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/photo"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
-	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type mockStorage struct {
@@ -19,7 +18,7 @@ type mockStorage struct {
 	UploadWEBPFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
-	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
+	UpdateLatestCheckinIDFunc func(ctx context.Context, checkinID uint64, createdAt time.Time) error
 }
 
 func (m *mockStorage) CheckinExists(
@@ -49,9 +48,13 @@ func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 	return 0, nil
 }
 
-func (m *mockStorage) UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error {
+func (m *mockStorage) UpdateLatestCheckinID(
+	ctx context.Context,
+	checkinID uint64,
+	createdAt time.Time,
+) error {
 	if m.UpdateLatestCheckinIDFunc != nil {
-		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
+		return m.UpdateLatestCheckinIDFunc(ctx, checkinID, createdAt)
 	}
 	return nil
 }
@@ -88,9 +91,9 @@ func (m *mockStorage) Download(ctx context.Context, fileName string) ([]byte, er
 type mockDownloader struct {
 	DownloadAndSaveFunc func(
 		ctx context.Context,
-		cfg *config.Config,
 		store storage.Storage,
 		photoURL string,
+		placeholderPath string,
 		metadata *storage.CheckinMetadata,
 	) error
 	DownloadAndSaveWEBPFunc func(
@@ -102,13 +105,13 @@ type mockDownloader struct {
 
 func (m *mockDownloader) DownloadAndSave(
 	ctx context.Context,
-	cfg *config.Config,
 	store storage.Storage,
 	photoURL string,
+	placeholderPath string,
 	metadata *storage.CheckinMetadata,
 ) error {
 	if m.DownloadAndSaveFunc != nil {
-		return m.DownloadAndSaveFunc(ctx, cfg, store, photoURL, metadata)
+		return m.DownloadAndSaveFunc(ctx, store, photoURL, placeholderPath, metadata)
 	}
 	return nil
 }
@@ -168,9 +171,9 @@ func TestRun(t *testing.T) {
 	var downloader photo.Downloader = &mockDownloader{
 		DownloadAndSaveFunc: func(
 			ctx context.Context,
-			cfg *config.Config,
 			store storage.Storage,
 			photoURL string,
+			placeholderPath string,
 			metadata *storage.CheckinMetadata,
 		) error {
 			downloadAndSaveCalled = true

@@ -2,12 +2,14 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type Storage interface {
@@ -17,7 +19,7 @@ type Storage interface {
 	CheckinExists(ctx context.Context, checkinID, createdAt string) (bool, error)
 	CheckinWEBPExists(ctx context.Context, checkinID, createdAt string) (bool, error)
 	GetLatestCheckinID(ctx context.Context) (uint64, error)
-	UpdateLatestCheckinID(ctx context.Context, checkin untappd.Checkin) error
+	UpdateLatestCheckinID(ctx context.Context, checkinID uint64, createdAt time.Time) error
 }
 
 type S3Client interface {
@@ -31,11 +33,6 @@ type S3Client interface {
 		params *s3.GetObjectInput,
 		optFns ...func(*s3.Options),
 	) (*s3.GetObjectOutput, error)
-	ListObjectsV2(
-		ctx context.Context,
-		params *s3.ListObjectsV2Input,
-		optFns ...func(*s3.Options),
-	) (*s3.ListObjectsV2Output, error)
 	HeadObject(
 		ctx context.Context,
 		params *s3.HeadObjectInput,
@@ -46,6 +43,16 @@ type S3Client interface {
 		params *s3.CopyObjectInput,
 		optFns ...func(*s3.Options),
 	) (*s3.CopyObjectOutput, error)
+}
+
+// CheckinKey returns the object key for a checkin photo:
+// YYYY/MM/DD/id.jpg for JPGs, YYYY/MM/DD/WEBP/id.webp for WebPs.
+func CheckinKey(t time.Time, id, ext string) string {
+	dir := t.Format("2006/01/02")
+	if ext == "webp" {
+		dir = path.Join(dir, "WEBP")
+	}
+	return path.Join(dir, fmt.Sprintf("%s.%s", id, ext))
 }
 
 // holds the metadata for a checkin photo
@@ -61,7 +68,7 @@ type CheckinMetadata struct {
 	State          string
 	Country        string
 	LatLng         string
-	Date           string
+	Date           time.Time
 	Style          string
 	ABV            string
 }
@@ -79,7 +86,7 @@ func (m *CheckinMetadata) ToMap() map[string]string {
 		"state":           m.State,
 		"country":         m.Country,
 		"latlng":          m.LatLng,
-		"date":            m.Date,
+		"date":            m.Date.Format(time.RFC1123Z),
 		"style":           m.Style,
 		"abv":             m.ABV,
 	}
@@ -123,12 +130,13 @@ func truncateUTF8(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	s = s[:max]
-	// trim back to a valid UTF-8 boundary so we never split a rune.
-	for len(s) > 0 && !utf8.ValidString(s) {
-		s = s[:len(s)-1]
+	cut := max
+	// if the cut lands inside a multi-byte rune, back up to that rune's
+	// start so we never emit a partial rune.
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
 	}
-	return s
+	return s[:cut]
 }
 
 func percentEncode(s string) string {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
@@ -11,7 +12,7 @@ import (
 
 type mockStorage struct {
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
-	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
+	UpdateLatestCheckinIDFunc func(ctx context.Context, checkinID uint64, createdAt time.Time) error
 	UploadJPGFunc             func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	UploadWEBPFunc            func(ctx context.Context, file []byte, metadata *storage.CheckinMetadata) error
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
@@ -28,10 +29,11 @@ func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
 
 func (m *mockStorage) UpdateLatestCheckinID(
 	ctx context.Context,
-	checkin untappd.Checkin,
+	checkinID uint64,
+	createdAt time.Time,
 ) error {
 	if m.UpdateLatestCheckinIDFunc != nil {
-		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
+		return m.UpdateLatestCheckinIDFunc(ctx, checkinID, createdAt)
 	}
 	return nil
 }
@@ -107,9 +109,9 @@ func (m *mockUntappdClient) FetchCheckins(
 type mockDownloader struct {
 	DownloadAndSaveFunc func(
 		ctx context.Context,
-		cfg *config.Config,
 		store storage.Storage,
 		photoURL string,
+		placeholderPath string,
 		metadata *storage.CheckinMetadata,
 	) error
 	DownloadAndSaveWEBPFunc func(
@@ -121,13 +123,13 @@ type mockDownloader struct {
 
 func (m *mockDownloader) DownloadAndSave(
 	ctx context.Context,
-	cfg *config.Config,
 	store storage.Storage,
 	photoURL string,
+	placeholderPath string,
 	metadata *storage.CheckinMetadata,
 ) error {
 	if m.DownloadAndSaveFunc != nil {
-		return m.DownloadAndSaveFunc(ctx, cfg, store, photoURL, metadata)
+		return m.DownloadAndSaveFunc(ctx, store, photoURL, placeholderPath, metadata)
 	}
 	return nil
 }
@@ -156,12 +158,13 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	mockStore := &mockStorage{
 		UpdateLatestCheckinIDFunc: func(
 			ctx context.Context,
-			checkin untappd.Checkin,
+			checkinID uint64,
+			createdAt time.Time,
 		) error {
 			updateLatestCheckinIDCalled = true
 
-			if checkin.CheckinID != 54321 {
-				t.Errorf("expected checkinID to be 54321, got %d", checkin.CheckinID)
+			if checkinID != 54321 {
+				t.Errorf("expected checkinID to be 54321, got %d", checkinID)
 			}
 
 			return nil
@@ -173,9 +176,9 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	mockDownloader := &mockDownloader{
 		DownloadAndSaveFunc: func(
 			ctx context.Context,
-			cfg *config.Config,
 			store storage.Storage,
 			photoURL string,
+			placeholderPath string,
 			metadata *storage.CheckinMetadata,
 		) error {
 			downloadAndSaveCalled = true
@@ -195,7 +198,7 @@ func TestRun_ProcessCheckins(t *testing.T) {
 			checkinProcessor func(context.Context, []untappd.Checkin) error,
 		) error {
 			checkins := []untappd.Checkin{
-				{CheckinID: 54321},
+				{CheckinID: 54321, CreatedAt: "Sat, 01 Nov 2025 00:00:00 +0000"},
 			}
 			return checkinProcessor(ctx, checkins)
 		},

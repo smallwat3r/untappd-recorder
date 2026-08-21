@@ -33,10 +33,9 @@ help:  ## Show this help menu
 all: fmt lint test build ## Run all common tasks
 
 .PHONY: vipsgen
-vipsgen: ## Generate vips bindings
-	@command -v vipsgen >/dev/null 2>&1 || (echo "Installing vipsgen..."; go install github.com/cshum/vipsgen/cmd/vipsgen@latest)
+vipsgen: ## Generate vips bindings (version pinned by go.mod)
 	@echo "Generating vips bindings..."
-	@cd internal && vipsgen
+	@cd internal && $(GOCMD) run github.com/cshum/vipsgen/cmd/vipsgen
 
 .PHONY: build
 build: vipsgen build-backfill build-record ## Build all Go applications

@@ -3,6 +3,7 @@ package untappd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -187,6 +188,13 @@ func (c *Client) fetchPage(
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		// the request URL carries the access token in its query string and
+		// url.Error embeds the full URL, so rebuild the error around the
+		// bare endpoint to keep the token out of logs.
+		var uerr *url.Error
+		if errors.As(err, &uerr) {
+			err = fmt.Errorf("%s %s: %w", uerr.Op, endpoint, uerr.Err)
+		}
 		return 0, true, err
 	}
 	defer resp.Body.Close()

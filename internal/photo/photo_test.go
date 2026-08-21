@@ -6,10 +6,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/smallwat3r/untappd-recorder/internal/config"
 	"github.com/smallwat3r/untappd-recorder/internal/storage"
-	"github.com/smallwat3r/untappd-recorder/internal/untappd"
 )
 
 type mockStorage struct {
@@ -19,7 +18,7 @@ type mockStorage struct {
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	CheckinWEBPExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
-	UpdateLatestCheckinIDFunc func(ctx context.Context, checkin untappd.Checkin) error
+	UpdateLatestCheckinIDFunc func(ctx context.Context, checkinID uint64, createdAt time.Time) error
 }
 
 func (m *mockStorage) UploadJPG(
@@ -87,10 +86,11 @@ func (m *mockStorage) GetLatestCheckinID(
 
 func (m *mockStorage) UpdateLatestCheckinID(
 	ctx context.Context,
-	checkin untappd.Checkin,
+	checkinID uint64,
+	createdAt time.Time,
 ) error {
 	if m.UpdateLatestCheckinIDFunc != nil {
-		return m.UpdateLatestCheckinIDFunc(ctx, checkin)
+		return m.UpdateLatestCheckinIDFunc(ctx, checkinID, createdAt)
 	}
 	return nil
 }
@@ -141,20 +141,6 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
-			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
-			t.Setenv("BUCKET_NAME", "test")
-			t.Setenv("NUM_WORKERS", "1")
-			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
-			t.Setenv("R2_ACCOUNT_ID", "test_account_id")
-			t.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
-			t.Setenv("R2_SECRET_ACCESS_KEY", "test_key_secret")
-			t.Setenv("BUCKET_NAME", "test_bucket_name")
-			cfg, err := config.Load()
-			if err != nil {
-				t.Fatalf("failed to load config: %v", err)
-			}
-
 			server := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(tt.serverStatus)
@@ -166,7 +152,7 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 			downloader := NewDownloader()
 			metadata := &storage.CheckinMetadata{
 				ID:   "123",
-				Date: "Sat, 01 Nov 2025 00:00:00 +0000",
+				Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
 			}
 
 			var uploadJPGCalls int
@@ -205,9 +191,9 @@ func TestDefaultDownloader_DownloadAndSave(t *testing.T) {
 
 			err = downloader.DownloadAndSave(
 				context.Background(),
-				cfg,
 				mockStore,
 				photoURL,
+				"../../img/missing.jpg",
 				metadata,
 			)
 
@@ -262,24 +248,10 @@ func TestDefaultDownloader_DownloadAndSaveWEBP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PLACEHOLDER_PHOTO_PATH", "../../img/missing.jpg")
-			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test")
-			t.Setenv("BUCKET_NAME", "test")
-			t.Setenv("NUM_WORKERS", "1")
-			t.Setenv("UNTAPPD_ACCESS_TOKEN", "test_token")
-			t.Setenv("R2_ACCOUNT_ID", "test_account_id")
-			t.Setenv("R2_ACCESS_KEY_ID", "test_key_id")
-			t.Setenv("R2_SECRET_ACCESS_KEY", "test_key_secret")
-			t.Setenv("BUCKET_NAME", "test_bucket_name")
-			_, err := config.Load()
-			if err != nil {
-				t.Fatalf("failed to load config: %v", err)
-			}
-
 			downloader := NewDownloader()
 			metadata := &storage.CheckinMetadata{
 				ID:   "123",
-				Date: "Sat, 01 Nov 2025 00:00:00 +0000",
+				Date: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
 			}
 
 			var downloadCalls int

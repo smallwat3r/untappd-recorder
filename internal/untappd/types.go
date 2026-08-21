@@ -4,6 +4,15 @@ import "fmt"
 
 const VenueUntappdAtHome = "Untappd at Home"
 
+// BlankIfAtHome blanks location values for the virtual "Untappd at Home"
+// venue, which carries no meaningful location.
+func BlankIfAtHome(value, venueName string) string {
+	if venueName == VenueUntappdAtHome {
+		return ""
+	}
+	return value
+}
+
 type UntappdResponse struct {
 	Response Response `json:"response"`
 }
@@ -80,29 +89,30 @@ func (v *Venue) Name() string {
 }
 
 func (v *Venue) City() string {
-	if v == nil || v.VenueName == VenueUntappdAtHome {
+	if v == nil {
 		return ""
 	}
-	return v.Location.City
+	return BlankIfAtHome(v.Location.City, v.VenueName)
 }
 
 func (v *Venue) State() string {
-	if v == nil || v.VenueName == VenueUntappdAtHome {
+	if v == nil {
 		return ""
 	}
-	return v.Location.State
+	return BlankIfAtHome(v.Location.State, v.VenueName)
 }
 
 func (v *Venue) Country() string {
-	if v == nil || v.VenueName == VenueUntappdAtHome {
+	if v == nil {
 		return ""
 	}
-	return v.Location.Country
+	return BlankIfAtHome(v.Location.Country, v.VenueName)
 }
 
 func (v *Venue) LatLng() string {
-	if v == nil || v.VenueName == VenueUntappdAtHome {
+	if v == nil {
 		return ""
 	}
-	return fmt.Sprintf("%f,%f", v.Location.Lat, v.Location.Lng)
+	latLng := fmt.Sprintf("%f,%f", v.Location.Lat, v.Location.Lng)
+	return BlankIfAtHome(latLng, v.VenueName)
 }
