@@ -92,6 +92,23 @@ It scans every photo in the bucket, and rewrites, in place, only those where fac
 found (regenerating the WebP copy as well). Replacement is permanent, so run `-dry-run`
 first, or enable bucket versioning if you want a way back.
 
+### Photo Manifest
+
+The recorder and backfill maintain a manifest at the bucket root, `index.json`: a JSON
+array with one record per WEBP photo (object key plus all decoded metadata fields),
+sorted newest first. The gallery frontend reads it to filter check-ins without
+per-object requests. It updates automatically at the end of each run.
+
+The manifest is derived data, the bucket stays the single source of truth. To create it
+for an existing bucket, or repair it if it is ever wrong or lost, run the rebuild
+command locally (it only needs the bucket credentials):
+
+```bash
+go run ./cmd/manifest
+```
+
+It walks every WEBP object, reads its metadata, and writes a fresh `index.json`.
+
 ## Deployment
 
 This application can be easily deployed as a serverless or cloud function (e.g., AWS Lambda, Google Cloud Functions) and scheduled to run on a daily basis to keep your check-in archive up to date.

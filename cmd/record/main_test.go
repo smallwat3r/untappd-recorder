@@ -18,6 +18,14 @@ type mockStorage struct {
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	CheckinExistsFunc         func(ctx context.Context, checkinID, createdAt string) (bool, error)
 	CheckinWEBPExistsFunc     func(ctx context.Context, checkinID, createdAt string) (bool, error)
+	UpdateManifestFunc        func(ctx context.Context) error
+}
+
+func (m *mockStorage) UpdateManifest(ctx context.Context) error {
+	if m.UpdateManifestFunc != nil {
+		return m.UpdateManifestFunc(ctx)
+	}
+	return nil
 }
 
 func (m *mockStorage) GetLatestCheckinID(ctx context.Context) (uint64, error) {
@@ -154,6 +162,7 @@ func TestRun_ProcessCheckins(t *testing.T) {
 	t.Setenv("NUM_WORKERS", "1")
 
 	updateLatestCheckinIDCalled := false
+	updateManifestCalled := false
 
 	mockStore := &mockStorage{
 		UpdateLatestCheckinIDFunc: func(
@@ -167,6 +176,10 @@ func TestRun_ProcessCheckins(t *testing.T) {
 				t.Errorf("expected checkinID to be 54321, got %d", checkinID)
 			}
 
+			return nil
+		},
+		UpdateManifestFunc: func(ctx context.Context) error {
+			updateManifestCalled = true
 			return nil
 		},
 	}
@@ -221,6 +234,10 @@ func TestRun_ProcessCheckins(t *testing.T) {
 
 	if !updateLatestCheckinIDCalled {
 		t.Error("expected UpdateLatestCheckinID to be called, but it was not")
+	}
+
+	if !updateManifestCalled {
+		t.Error("expected UpdateManifest to be called, but it was not")
 	}
 
 	if !downloadAndSaveCalled {

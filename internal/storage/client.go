@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -23,6 +24,10 @@ import (
 type Client struct {
 	s3Client   S3Client
 	bucketName string
+
+	// WEBP uploads queued for the next UpdateManifest call
+	pendingMu sync.Mutex
+	pending   []ManifestRecord
 }
 
 func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
@@ -85,7 +90,11 @@ func (c *Client) UploadJPG(ctx context.Context, file []byte, md *CheckinMetadata
 }
 
 func (c *Client) UploadWEBP(ctx context.Context, file []byte, md *CheckinMetadata) error {
-	return c.upload(ctx, file, md, "webp", "image/webp")
+	if err := c.upload(ctx, file, md, "webp", "image/webp"); err != nil {
+		return err
+	}
+	c.recordManifestEntry(CheckinKey(md.Date, md.ID, "webp"), md)
+	return nil
 }
 
 func (c *Client) upload(
@@ -154,6 +163,12 @@ func (c *Client) DownloadWithMetadata(
 
 // ListJPGKeys returns the keys of every .jpg object in the bucket.
 func (c *Client) ListJPGKeys(ctx context.Context) ([]string, error) {
+	return c.listKeys(ctx, func(key string) bool {
+		return strings.HasSuffix(key, ".jpg")
+	})
+}
+
+func (c *Client) listKeys(ctx context.Context, keep func(string) bool) ([]string, error) {
 	var keys []string
 	var continuationToken *string
 
@@ -167,7 +182,7 @@ func (c *Client) ListJPGKeys(ctx context.Context) ([]string, error) {
 		}
 
 		for _, obj := range out.Contents {
-			if obj.Key != nil && strings.HasSuffix(*obj.Key, ".jpg") {
+			if obj.Key != nil && keep(*obj.Key) {
 				keys = append(keys, *obj.Key)
 			}
 		}

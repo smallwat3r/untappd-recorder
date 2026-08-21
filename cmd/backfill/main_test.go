@@ -19,6 +19,14 @@ type mockStorage struct {
 	DownloadFunc              func(ctx context.Context, fileName string) ([]byte, error)
 	GetLatestCheckinIDFunc    func(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinIDFunc func(ctx context.Context, checkinID uint64, createdAt time.Time) error
+	UpdateManifestFunc        func(ctx context.Context) error
+}
+
+func (m *mockStorage) UpdateManifest(ctx context.Context) error {
+	if m.UpdateManifestFunc != nil {
+		return m.UpdateManifestFunc(ctx)
+	}
+	return nil
 }
 
 func (m *mockStorage) CheckinExists(

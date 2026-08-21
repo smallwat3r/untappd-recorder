@@ -106,6 +106,10 @@ func runBackfill(
 	}
 
 	processCSVRecords(ctx, store, cfg, records, header, downloader)
+
+	if err := store.UpdateManifest(ctx); err != nil {
+		return fmt.Errorf("failed to update manifest: %w", err)
+	}
 	return nil
 }
 

@@ -92,6 +92,12 @@ func runRecorder(
 		return nil
 	}
 
+	// publish whatever uploaded successfully; if this fails the marker below
+	// does not advance, so the next run re-uploads and retries the manifest
+	if err := store.UpdateManifest(ctx); err != nil {
+		return fmt.Errorf("failed to update manifest: %w", err)
+	}
+
 	// only advance the marker when every checkin saved, so failed ones are
 	// retried on the next run instead of being skipped forever
 	if failed > 0 {

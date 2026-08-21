@@ -19,9 +19,11 @@ BIN_DIR=bin
 APP_NAME_BACKFILL=backfill
 APP_NAME_RECORD=record
 APP_NAME_BLURFACES=blurfaces
+APP_NAME_MANIFEST=manifest
 TARGET_BACKFILL=$(BIN_DIR)/$(APP_NAME_BACKFILL)
 TARGET_RECORD=$(BIN_DIR)/$(APP_NAME_RECORD)
 TARGET_BLURFACES=$(BIN_DIR)/$(APP_NAME_BLURFACES)
+TARGET_MANIFEST=$(BIN_DIR)/$(APP_NAME_MANIFEST)
 
 .DEFAULT_GOAL := help
 
@@ -40,7 +42,7 @@ vipsgen: ## Generate vips bindings (version pinned by go.mod)
 	@cd internal && $(GOCMD) run github.com/cshum/vipsgen/cmd/vipsgen
 
 .PHONY: build
-build: vipsgen build-backfill build-record build-blurfaces ## Build all Go applications
+build: vipsgen build-backfill build-record build-blurfaces build-manifest ## Build all Go applications
 
 .PHONY: build-backfill
 build-backfill: ## Build the backfill Go application
@@ -53,6 +55,10 @@ build-record: ## Build the record Go application
 .PHONY: build-blurfaces
 build-blurfaces: ## Build the blurfaces Go application
 	$(GOBUILD) -o $(TARGET_BLURFACES) ./cmd/blurfaces
+
+.PHONY: build-manifest
+build-manifest: ## Build the manifest Go application
+	$(GOBUILD) -o $(TARGET_MANIFEST) ./cmd/manifest
 
 .PHONY: test
 test: ## Run the Go tests

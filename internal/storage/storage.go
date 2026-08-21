@@ -20,6 +20,7 @@ type Storage interface {
 	CheckinWEBPExists(ctx context.Context, checkinID, createdAt string) (bool, error)
 	GetLatestCheckinID(ctx context.Context) (uint64, error)
 	UpdateLatestCheckinID(ctx context.Context, checkinID uint64, createdAt time.Time) error
+	UpdateManifest(ctx context.Context) error
 }
 
 type S3Client interface {
