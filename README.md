@@ -104,7 +104,14 @@ Once tuned, set `BLUR_MIN_QUALITY` on the recorder service so new checkins use
 the same cutoff. The `blurfaces` command only needs the bucket credentials,
 `UNTAPPD_ACCESS_TOKEN` is required by the recorder alone.
 
-It scans every photo in the bucket, and rewrites, in place, only those where faces are
+To redo specific photos where faces were missed, pass their keys as arguments,
+typically with a more permissive cutoff:
+
+```bash
+go run ./cmd/blurfaces -min-quality 0.25 2019/08/25/796751183.jpg 2020/01/12/812345678.jpg
+```
+
+By default it scans every photo in the bucket, and rewrites, in place, only those where faces are
 found (regenerating the WebP copy as well). Replacement is permanent, so run `-dry-run`
 first, or enable bucket versioning if you want a way back.
 

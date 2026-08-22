@@ -23,7 +23,7 @@ var modelData []byte
 
 // DefaultMinQuality is the detection confidence cutoff (0 to 1): higher
 // means fewer false positives, lower means fewer missed faces.
-const DefaultMinQuality = 0.5
+const DefaultMinQuality = 0.25
 
 const (
 	inputSize    = 640  // YOLO letterbox size

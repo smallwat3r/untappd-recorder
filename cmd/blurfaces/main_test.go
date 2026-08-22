@@ -82,7 +82,7 @@ func TestRun_ReplacesInPlace(t *testing.T) {
 		replaced: map[string][]byte{},
 	}
 
-	if err := run(context.Background(), false, st, fakeDetect, fakeBlur, fakeToWEBP); err != nil {
+	if err := run(context.Background(), false, nil, st, fakeDetect, fakeBlur, fakeToWEBP); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -128,10 +128,39 @@ func TestRun_DryRunWritesNothing(t *testing.T) {
 		replaced: map[string][]byte{},
 	}
 
-	if err := run(context.Background(), true, st, fakeDetect, fakeBlur, fakeToWEBP); err != nil {
+	if err := run(context.Background(), true, nil, st, fakeDetect, fakeBlur, fakeToWEBP); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(st.replaced) != 0 {
 		t.Errorf("dry-run must not write, got %v", st.replaced)
+	}
+}
+
+func TestRun_ExplicitKeysSkipListing(t *testing.T) {
+	setEnv(t)
+
+	st := &mockStore{
+		keys: []string{"2019/08/18/111.jpg", "2019/08/25/796751183.jpg"},
+		objects: map[string][]byte{
+			"2019/08/18/111.jpg":       []byte("face"),
+			"2019/08/25/796751183.jpg": []byte("face"),
+		},
+		metadata: map[string]map[string]string{},
+		replaced: map[string][]byte{},
+	}
+
+	err := run(
+		context.Background(), false, []string{"2019/08/25/796751183.jpg"},
+		st, fakeDetect, fakeBlur, fakeToWEBP,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := string(st.replaced["2019/08/25/796751183.jpg"]); got != "blurred" {
+		t.Errorf("expected targeted key to be replaced, got %q", got)
+	}
+	if _, ok := st.replaced["2019/08/18/111.jpg"]; ok {
+		t.Error("untargeted photo must not be rewritten")
 	}
 }

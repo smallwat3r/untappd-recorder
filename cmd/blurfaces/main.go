@@ -1,7 +1,12 @@
-// Command blurfaces reprocesses every photo already stored in the bucket,
-// blurring detected faces and replacing the objects in place. Intended to be
-// run locally as a one-off; new checkins are blurred at ingestion when
-// BLUR_FACES is set.
+// Command blurfaces reprocesses photos already stored in the bucket,
+// blurring detected faces and replacing the objects in place. By default it
+// scans every photo; pass specific keys as arguments to redo only those,
+// optionally with a custom -min-quality, e.g.
+//
+//	blurfaces -min-quality 0.15 2019/08/25/796751183.jpg
+//
+// Intended to be run locally as a one-off; new checkins are blurred at
+// ingestion when BLUR_FACES is set.
 package main
 
 import (
@@ -39,7 +44,7 @@ func main() {
 	}
 
 	if err := run(
-		context.Background(), *dryRun, nil, detect, faceblur.BlurFaces, photo.ToWEBP,
+		context.Background(), *dryRun, flag.Args(), nil, detect, faceblur.BlurFaces, photo.ToWEBP,
 	); err != nil {
 		log.Fatalf("blurfaces failed: %v", err)
 	}
@@ -48,6 +53,7 @@ func main() {
 func run(
 	ctx context.Context,
 	dryRun bool,
+	keys []string,
 	st store,
 	detect func([]byte) ([]faceblur.Face, error),
 	blur func([]byte, []faceblur.Face) ([]byte, error),
@@ -66,9 +72,11 @@ func run(
 		st = c
 	}
 
-	keys, err := st.ListJPGKeys(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list photos: %w", err)
+	if len(keys) == 0 {
+		keys, err = st.ListJPGKeys(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list photos: %w", err)
+		}
 	}
 	log.Printf("Found %d photos to scan (dry-run: %v)", len(keys), dryRun)
 
