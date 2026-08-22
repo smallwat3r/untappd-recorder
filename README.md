@@ -38,7 +38,7 @@ BUCKET_NAME="your_bucket_name"
 
 # Optional
 BLUR_FACES="true"        # Blur detected faces before photos are uploaded (default false)
-BLUR_MIN_QUALITY="0.25"  # Detection confidence cutoff, 0 to 1
+BLUR_MIN_QUALITY="0.35"  # Detection confidence cutoff, 0 to 1
 NUM_WORKERS="4"          # Concurrent photo workers
 
 # For Cloudflare R2:
@@ -98,7 +98,7 @@ go run ./cmd/blurfaces -dry-run   # report what would be blurred, with confidenc
 go run ./cmd/blurfaces            # replace photos in place
 ```
 
-Detection confidence ranges 0 to 1 (default cutoff 0.25). Tune it with
+Detection confidence ranges 0 to 1 (default cutoff 0.35). Tune it with
 `-min-quality`: raise it if non-faces get blurred, lower it if faces are missed.
 Once tuned, set `BLUR_MIN_QUALITY` on the recorder service so new checkins use
 the same cutoff. The `blurfaces` command only needs the bucket credentials,

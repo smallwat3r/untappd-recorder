@@ -23,7 +23,7 @@ var modelData []byte
 
 // DefaultMinQuality is the detection confidence cutoff (0 to 1): higher
 // means fewer false positives, lower means fewer missed faces.
-const DefaultMinQuality = 0.25
+const DefaultMinQuality = 0.35
 
 const (
 	inputSize    = 640  // YOLO letterbox size
@@ -83,6 +83,8 @@ func libraryPath() string {
 		return p
 	}
 	for _, p := range []string{
+		// bundled copy, found when run from the repo root
+		"bin/onnxruntime-linux-x64-1.29.0/lib/libonnxruntime.so",
 		"/usr/lib/libonnxruntime.so",
 		"/usr/local/lib/libonnxruntime.so",
 		"/opt/homebrew/lib/libonnxruntime.dylib",
